@@ -15,7 +15,8 @@ const engine = new Engine('game-container');
 const levelManager = new LevelManager(engine.getScene());
 const editorSystem = new EditorSystem(engine, levelManager);
 const gameManager = new GameManager(engine, levelManager, editorSystem);
-new EditorUI('ui-layer', editorSystem, levelManager);
+const ui = new EditorUI('ui-layer', editorSystem, levelManager);
+gameManager.setUI(ui);
 
 // Add initial ground platform
 for (let x = -2; x <= 2; x++) {

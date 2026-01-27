@@ -12,6 +12,8 @@ export class Engine {
   private updateCallbacks: ((dt: number) => void)[] = [];
   private clock: THREE.Clock;
   private inputManager: InputManager;
+  private gridHelper: THREE.GridHelper;
+  private axesHelper: THREE.AxesHelper;
 
   constructor(containerId: string) {
     // Input Manager
@@ -58,19 +60,25 @@ export class Engine {
     // Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.enabled = true; // Default enabled, but controlled by Game/Editor systems
 
     // Lights
     this.setupLights();
 
     // Helpers
-    const gridHelper = new THREE.GridHelper(CONSTANTS.GRID_SIZE, CONSTANTS.GRID_SIZE);
-    this.scene.add(gridHelper);
+    this.gridHelper = new THREE.GridHelper(CONSTANTS.GRID_SIZE, CONSTANTS.GRID_SIZE);
+    this.scene.add(this.gridHelper);
     
-    const axesHelper = new THREE.AxesHelper(5);
-    this.scene.add(axesHelper);
+    this.axesHelper = new THREE.AxesHelper(5);
+    this.scene.add(this.axesHelper);
 
     // Resize Handler
     window.addEventListener('resize', this.onWindowResize.bind(this));
+  }
+
+  public setHelpersVisibility(visible: boolean): void {
+    this.gridHelper.visible = visible;
+    this.axesHelper.visible = visible;
   }
 
   private setupLights(): void {

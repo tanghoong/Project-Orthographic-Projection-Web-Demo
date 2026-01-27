@@ -142,6 +142,16 @@ export class PhysicsSystem {
              this.character.position.y = vMaxY + charSize/2;
              this.character.isGrounded = true;
              this.character.velocity.y = 0;
+
+             // DEPTH SNAPPING: Snap player to the platform's depth to ensure stability on rotation
+             if (this.viewState === ViewState.FRONT || this.viewState === ViewState.BACK) {
+                // Snap Z to block's Z
+                this.character.position.z = voxelPos.z;
+             } else {
+                // Snap X to block's X
+                this.character.position.x = voxelPos.x;
+             }
+
            } else if (this.character.velocity.y > 0) {
              // Ceiling
              this.character.position.y = vMinY - charSize/2;

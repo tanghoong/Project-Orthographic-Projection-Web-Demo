@@ -8,6 +8,7 @@ import { Character } from '../entities/Character';
 import { InputManager } from '../core/InputManager';
 import { CONSTANTS } from '../utils/Constants';
 import { GameMode, ViewState } from '../utils/Enums';
+import { EditorUI } from '../ui/EditorUI'; // Import EditorUI type
 
 export class GameManager {
   private engine: Engine;
@@ -16,6 +17,13 @@ export class GameManager {
   private physicsSystem: PhysicsSystem | null = null;
   private character: Character | null = null;
   
+  // UI Reference (Ideally this should be passed in or managed via an event system, 
+  // but for simplicity we can grab it from main or have it passed)
+  // We will assume it's available or we can access the global instance if needed.
+  // Better: Pass it in constructor. But constructor signature is fixed in main.ts currently.
+  // Let's modify main.ts to pass UI or use a setter.
+  private ui: EditorUI | null = null;
+
   private mode: GameMode = GameMode.EDIT;
   private inputManager: InputManager;
 
@@ -39,6 +47,10 @@ export class GameManager {
     });
   }
 
+  public setUI(ui: EditorUI) {
+      this.ui = ui;
+  }
+
   public toggleMode(): void {
     if (this.mode === GameMode.EDIT) {
       this.enterPlayMode();
@@ -51,6 +63,12 @@ export class GameManager {
     console.log("Entering Play Mode");
     this.mode = GameMode.PLAY;
     
+    // UI Update
+    if (this.ui) this.ui.setGameMode(GameMode.PLAY);
+
+    // Disable Helpers (Axes/Grid)
+    this.engine.setHelpersVisibility(false);
+
     // Disable Editor
     this.editorSystem.setEnabled(false);
 
@@ -86,6 +104,12 @@ export class GameManager {
     console.log("Entering Edit Mode");
     this.mode = GameMode.EDIT;
 
+    // UI Update
+    if (this.ui) this.ui.setGameMode(GameMode.EDIT);
+
+    // Enable Helpers (Axes/Grid)
+    this.engine.setHelpersVisibility(true);
+
     // Enable Editor
     this.editorSystem.setEnabled(true);
 
@@ -101,6 +125,14 @@ export class GameManager {
   }
 
   public update(dt: number): void {
+    // Update Compass Rotation
+    if (this.ui) {
+        // Calculate camera angle relative to origin
+        const camera = this.engine.getCamera();
+        const angle = Math.atan2(camera.position.x, camera.position.z);
+        this.ui.updateCompass(angle);
+    }
+
     if (this.mode === GameMode.PLAY && this.physicsSystem && this.character) {
       // Handle Rotation Input
       if (!this.isRotating) {

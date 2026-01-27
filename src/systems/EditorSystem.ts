@@ -14,7 +14,9 @@ export class EditorSystem {
   
   private currentType: VoxelType = VoxelType.SOLID;
   private isEraserMode: boolean = false; // Key 5 or Alt key
+  private isCursorMode: boolean = false; // Key 0
   private isAltDown: boolean = false;
+  private isSpaceDown: boolean = false; // Space key for OrbitControls
   private enabled: boolean = true;
 
   constructor(engine: Engine, levelManager: LevelManager) {
@@ -44,12 +46,32 @@ export class EditorSystem {
     this.engine.getScene().add(this.highlightBox);
 
     this.setupInputs();
+    
+    // Initially disable OrbitControls, enable only when Space is held (or if we want default behavior)
+    // Actually, user requested: "Hold Space to activate map manipulation mode".
+    // This implies default is painting, not rotating.
+    this.engine.getControls().enabled = false;
   }
 
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    this.ghostMesh.visible = enabled;
-    this.highlightBox.visible = enabled && this.highlightBox.visible;
+    this.updateVisuals();
+    if (!enabled) {
+        this.engine.getControls().enabled = false;
+    }
+  }
+
+  private updateVisuals(): void {
+      const showVisuals = this.enabled && !this.isCursorMode && !this.isSpaceDown;
+      this.ghostMesh.visible = showVisuals;
+      this.highlightBox.visible = showVisuals && this.highlightBox.visible;
+      
+      // Update cursor style
+      if (this.isSpaceDown && this.enabled) {
+          document.body.style.cursor = 'grab';
+      } else {
+          document.body.style.cursor = 'default';
+      }
   }
 
   private setupInputs(): void {
@@ -66,38 +88,70 @@ export class EditorSystem {
   }
 
   private onKeyDown(event: KeyboardEvent): void {
+    if (!this.enabled) return;
+
+    if (event.code === 'Space') {
+        this.isSpaceDown = true;
+        this.engine.getControls().enabled = true;
+        this.updateVisuals();
+        return;
+    }
+
     if (event.key === 'Alt') {
       this.isAltDown = true;
     }
 
-    if (!this.enabled) return;
-
-    // Number keys 1-5
+    // Number keys 0-5
     switch(event.key) {
+      case '0': this.setCursorMode(); break;
       case '1': this.setBrush(VoxelType.SOLID); break;
       case '2': this.setBrush(VoxelType.PLATFORM); break;
       case '3': this.setBrush(VoxelType.SPAWN); break;
       case '4': this.setBrush(VoxelType.GOAL); break;
       case '5': this.setEraser(); break;
+      case 'z':
+        if (event.ctrlKey || event.metaKey) {
+          this.levelManager.undo();
+        }
+        break;
       case 'p': case 'P': console.log(this.levelManager.serialize()); break; // Quick export
     }
   }
 
   private onKeyUp(event: KeyboardEvent): void {
+    if (event.code === 'Space') {
+        this.isSpaceDown = false;
+        if (this.enabled) {
+            this.engine.getControls().enabled = false;
+        }
+        this.updateVisuals();
+    }
+
     if (event.key === 'Alt') {
       this.isAltDown = false;
     }
   }
 
+  public setCursorMode() {
+    this.isCursorMode = true;
+    this.isEraserMode = false;
+    this.updateVisuals();
+    console.log("Cursor Mode Active");
+  }
+
   public setBrush(type: VoxelType) {
     this.currentType = type;
     this.isEraserMode = false;
+    this.isCursorMode = false;
     this.updateGhostColor();
+    this.updateVisuals();
     console.log(`Brush set to: ${VoxelType[type]}`);
   }
 
   public setEraser() {
     this.isEraserMode = true;
+    this.isCursorMode = false;
+    this.updateVisuals();
     console.log("Eraser Mode Active");
   }
 
@@ -114,6 +168,8 @@ export class EditorSystem {
   private onMouseDown(event: MouseEvent): void {
     if (event.button !== 0) return; // Only left click
     if (!this.enabled) return;
+    if (this.isCursorMode) return; // Do nothing in cursor mode
+    if (this.isSpaceDown) return; // Do nothing if rotating camera
 
     const intersect = this.getIntersection();
     const isDelete = this.isEraserMode || this.isAltDown;
@@ -156,6 +212,15 @@ export class EditorSystem {
   // Called every frame
   public update(): void {
     if (!this.enabled) return;
+    
+    // Update cursor logic for dragging if Space is held
+    if (this.isSpaceDown) {
+        return; // Skip raycasting updates
+    }
+
+    if (this.isCursorMode) {
+      return;
+    }
 
     // Use InputManager for mouse and keys
     const input = this.engine.getInputManager();
@@ -187,11 +252,6 @@ export class EditorSystem {
         );
       }
     } else {
-      // If pointing at nothing, handle "Ground Plane" logic? 
-      // For MVP, maybe we need an invisible ground plane at Y=0 to start building?
-      // Or just ensure we always have a starting block.
-      // Let's add a "Grid Plane" intersection for building from scratch.
-      
       this.handleGridIntersection(isDelete);
     }
   }

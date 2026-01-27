@@ -1,11 +1,13 @@
 import { EditorSystem } from '../systems/EditorSystem';
 import { LevelManager } from '../systems/LevelManager';
 import { VoxelType } from '../entities/Voxel';
+import { GameMode } from '../utils/Enums';
 
 export class EditorUI {
   private editorSystem: EditorSystem;
   private levelManager: LevelManager;
   private container: HTMLElement;
+  private compassArrow: HTMLElement | null = null;
 
   constructor(containerId: string, editorSystem: EditorSystem, levelManager: LevelManager) {
     this.editorSystem = editorSystem;
@@ -14,17 +16,59 @@ export class EditorUI {
     
     this.render();
     this.attachEvents();
+    this.updateLevelList();
+    
+    // Set initial mode class
+    this.container.classList.add('edit-mode');
+  }
+
+  public setGameMode(mode: GameMode): void {
+    if (mode === GameMode.PLAY) {
+      this.container.classList.remove('edit-mode');
+      this.container.classList.add('play-mode');
+    } else {
+      this.container.classList.remove('play-mode');
+      this.container.classList.add('edit-mode');
+    }
+  }
+
+  public updateCompass(rotationY: number): void {
+    if (this.compassArrow) {
+      // Rotate opposite to camera to keep "North" fixed relative to world
+      // Or if the compass represents the world, it rotates with the world?
+      // Standard game compass: The needle points North.
+      // If camera rotates Left (CCW), North moves Right (CW).
+      // So needle rotation = Camera Rotation.
+      // Let's test: Camera 0 (looking -Z). North is Forward (Top of screen). Needle 0.
+      // Camera 90 (looking -X). North is Right. Needle 90.
+      // So Needle Rotation = Camera Rotation (in degrees).
+      const degrees = rotationY * (180 / Math.PI);
+      this.compassArrow.style.transform = `rotate(${degrees}deg)`;
+    }
   }
 
   private render(): void {
     this.container.innerHTML = `
       <div class="toolbar top-bar">
-        <button id="btn-save">Save JSON</button>
-        <button id="btn-load">Load JSON</button>
-        <button id="btn-clear">Clear All</button>
+        <div class="save-load-container">
+           <input type="text" id="level-name-input" placeholder="Level Name" />
+           <button id="btn-save-local">Save</button>
+           <select id="level-select"></select>
+           <button id="btn-load-local">Load</button>
+        </div>
+        <div style="width: 20px;"></div>
+        <button id="btn-undo">Undo</button>
+        <button id="btn-clear">Clear</button>
+        <button id="btn-export">Export JSON</button>
       </div>
       
+      <div class="compass-container">
+        <div class="compass-label">N</div>
+        <div class="compass-arrow" id="compass-arrow"></div>
+      </div>
+
       <div class="toolbar bottom-bar">
+        <button class="block-btn" data-type="0">0. Cursor</button>
         <button class="block-btn active" data-type="1">1. Solid</button>
         <button class="block-btn" data-type="2">2. Platform</button>
         <button class="block-btn" data-type="3">3. Spawn</button>
@@ -32,6 +76,8 @@ export class EditorUI {
         <button class="block-btn" data-type="5">5. Eraser</button>
       </div>
     `;
+    
+    this.compassArrow = document.getElementById('compass-arrow');
   }
 
   private attachEvents(): void {
@@ -46,7 +92,9 @@ export class EditorUI {
         buttons.forEach(b => b.classList.remove('active'));
         target.classList.add('active');
 
-        if (type === 5) {
+        if (type === 0) {
+            this.editorSystem.setCursorMode();
+        } else if (type === 5) {
           this.editorSystem.setEraser();
         } else {
           this.editorSystem.setBrush(type as VoxelType);
@@ -54,23 +102,43 @@ export class EditorUI {
       });
     });
 
-    // Save/Load
-    document.getElementById('btn-save')?.addEventListener('click', () => {
+    // Undo
+    document.getElementById('btn-undo')?.addEventListener('click', () => {
+        this.levelManager.undo();
+    });
+
+    // Local Storage Save
+    document.getElementById('btn-save-local')?.addEventListener('click', () => {
+        const input = document.getElementById('level-name-input') as HTMLInputElement;
+        const name = input.value.trim();
+        if (name) {
+            this.levelManager.saveToLocalStorage(name);
+            alert(`Level '${name}' saved!`);
+            this.updateLevelList();
+        } else {
+            alert('Please enter a level name.');
+        }
+    });
+
+    // Local Storage Load
+    document.getElementById('btn-load-local')?.addEventListener('click', () => {
+        const select = document.getElementById('level-select') as HTMLSelectElement;
+        const name = select.value;
+        if (name) {
+            if (this.levelManager.loadFromLocalStorage(name)) {
+                // alert(`Level '${name}' loaded!`); 
+                // Don't alert on load, just do it.
+            } else {
+                alert('Failed to load level.');
+            }
+        }
+    });
+
+    // Export JSON
+    document.getElementById('btn-export')?.addEventListener('click', () => {
       const json = this.levelManager.serialize();
       console.log(json);
       alert('Level JSON exported to Console (F12)');
-      // In a real app, this might trigger a file download
-    });
-
-    document.getElementById('btn-load')?.addEventListener('click', () => {
-      const input = prompt('Paste Level JSON here:');
-      if (input) {
-        if (this.levelManager.deserialize(input)) {
-          alert('Level loaded successfully!');
-        } else {
-          alert('Failed to load level. Check console for details.');
-        }
-      }
     });
 
     document.getElementById('btn-clear')?.addEventListener('click', () => {
@@ -78,5 +146,20 @@ export class EditorUI {
         this.levelManager.clear();
       }
     });
+  }
+
+  private updateLevelList(): void {
+      const select = document.getElementById('level-select') as HTMLSelectElement;
+      if (!select) return;
+
+      const levels = this.levelManager.listSavedLevels();
+      select.innerHTML = '';
+      
+      levels.forEach(level => {
+          const option = document.createElement('option');
+          option.value = level;
+          option.textContent = level;
+          select.appendChild(option);
+      });
   }
 }
