@@ -93,8 +93,8 @@ export class EditorUI {
       </div>
 
       <div class="toolbar bottom-bar">
-        <button class="block-btn" data-type="0">0. Cursor</button>
-        <button class="block-btn active" data-type="1">1. Solid</button>
+        <button class="block-btn active" data-type="0">0. Cursor</button>
+        <button class="block-btn" data-type="1">1. Solid</button>
         <button class="block-btn" data-type="2">2. Platform</button>
         <button class="block-btn" data-type="3">3. Spawn</button>
         <button class="block-btn" data-type="4">4. Goal</button>

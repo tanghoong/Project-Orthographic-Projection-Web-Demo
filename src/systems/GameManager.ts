@@ -210,6 +210,8 @@ export class GameManager {
         camera.position.x = radius * Math.sin(animationObj.angle);
         camera.position.z = radius * Math.cos(animationObj.angle);
         camera.lookAt(0, 0, 0);
+        // Force occlusion check during animation
+        this.handleCharacterOcclusion();
       },
       onComplete: () => {
         this.isRotating = false;
@@ -218,5 +220,109 @@ export class GameManager {
         }
       }
     });
+  }
+
+  private handleCharacterOcclusion(): void {
+      if (!this.character || !this.engine) return;
+
+      const camera = this.engine.getCamera();
+      const charPos = this.character.position.clone();
+      const camPos = camera.position.clone();
+      
+      // Direction from camera to character
+      const dir = charPos.sub(camPos).normalize();
+      // const dist = charPos.length(); // approximate distance check (Unused)
+
+      const raycaster = new THREE.Raycaster(camPos, dir);
+      
+      // Get all voxels
+      const voxels = this.levelManager.getAllVoxels();
+      
+      // Check intersections
+      const intersects = raycaster.intersectObjects(voxels);
+
+      // let isOccluded = false; (Unused)
+
+      // Reset all voxels to opaque first (optional, but safer to prevent stuck transparency)
+      // Optimization: Only reset those we touched previously? For now, brute force is safe for small levels.
+      // Better: Reset transparency only if we change logic. 
+      // Current Logic: If intersect distance < character distance, it is blocking.
+      
+      // Calculate distance to character
+      const distanceToChar = camPos.distanceTo(this.character.position);
+
+      /* Unused loop block removed
+      for (const hit of intersects) {
+          if (hit.distance < distanceToChar - 0.5) { // 0.5 tolerance to avoid self-collision or adjacent floor
+              isOccluded = true;
+              
+              // Make the blocking object transparent
+              const mesh = hit.object as THREE.Mesh;
+              const material = mesh.material as THREE.MeshStandardMaterial;
+              if (material) {
+                  material.transparent = true;
+                  material.opacity = 0.3;
+              }
+          }
+      }
+      */
+
+      // Restore opacity for objects that are NO LONGER blocking
+      // This requires tracking state. A simpler approach for "X-Ray Character" is:
+      // If occluded, draw character On Top or Outline.
+      // User requested: "X-Ray effect (outline or semi-transparent wall)".
+      // Let's go with Semi-Transparent Wall for now as implemented above, BUT we need to restore opacity.
+      
+      // To restore opacity efficiently:
+      // We can iterate all voxels? No, too slow.
+      // We can keep a list of "faded" objects.
+      
+      // Refined Logic:
+      // 1. Reset previously faded objects.
+      // 2. Fade new blocking objects.
+      this.updateOcclusion(intersects, distanceToChar);
+  }
+
+  private fadedObjects: THREE.Mesh[] = [];
+
+  private updateOcclusion(intersects: THREE.Intersection[], distanceToChar: number) {
+      // 1. Restore all previously faded objects
+      for (const mesh of this.fadedObjects) {
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat) {
+              mat.opacity = 1.0;
+              mat.transparent = false; // Set back to false if it was originally opaque
+              // Note: If blocks are naturally transparent (glass), this logic needs flag checking.
+              // For now, assuming all blocks are solid.
+          }
+      }
+      this.fadedObjects = [];
+
+      // 2. Fade current blockers
+      for (const hit of intersects) {
+          if (hit.distance < distanceToChar - 0.2) { // Tighter tolerance
+              const mesh = hit.object as THREE.Mesh;
+              if (mesh !== this.character) { // Don't fade self
+                  const mat = mesh.material as THREE.MeshStandardMaterial;
+                  if (mat) {
+                      mat.transparent = true;
+                      mat.opacity = 0.2; // Very see-through
+                      this.fadedObjects.push(mesh);
+                  }
+              }
+          }
+      }
+      
+      // Also, ensure Character is always rendered? 
+      // Character.renderOrder = 1 is set.
+      if (this.character) {
+        const charMat = this.character.material as THREE.MeshStandardMaterial;
+        if (this.fadedObjects.length > 0) {
+            // Optional: Highlight character when occluded
+            charMat.emissive.setHex(0x555555);
+        } else {
+            charMat.emissive.setHex(0x000000);
+        }
+      }
   }
 }

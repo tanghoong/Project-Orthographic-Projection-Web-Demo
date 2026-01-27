@@ -11,6 +11,7 @@ export class PhysicsSystem {
   private viewState: ViewState = ViewState.FRONT;
   private inputX: number = 0; // -1, 0, 1
   public onGoalReached: (() => void) | null = null;
+  private prevPosition: THREE.Vector3 = new THREE.Vector3();
 
   constructor(character: Character, levelManager: LevelManager) {
     this.character = character;
@@ -39,6 +40,9 @@ export class PhysicsSystem {
   }
 
   public update(dt: number): void {
+    // Store previous position for collision resolution
+    this.prevPosition.copy(this.character.position);
+
     // Apply Horizontal Movement based on View State
     const speed = 10;
     const moveVel = this.inputX * speed;
@@ -49,9 +53,9 @@ export class PhysicsSystem {
 
     switch (this.viewState) {
       case ViewState.FRONT: this.character.velocity.x = moveVel; break;
-      case ViewState.RIGHT: this.character.velocity.z = moveVel; break;
+      case ViewState.RIGHT: this.character.velocity.z = -moveVel; break; // Invert Z for Right View
       case ViewState.BACK:  this.character.velocity.x = -moveVel; break;
-      case ViewState.LEFT:  this.character.velocity.z = -moveVel; break;
+      case ViewState.LEFT:  this.character.velocity.z = moveVel; break;  // Invert Z for Left View
     }
 
     // Apply Gravity
@@ -68,16 +72,16 @@ export class PhysicsSystem {
     // 2. Move Vertical
     this.character.position.y += delta.y;
     this.character.isGrounded = false;
-    this.checkCollision('vertical');
+    this.checkCollision('vertical'); // Returns true if collision handled
 
-    // Simple floor clamp
-    if (this.character.position.y < -10) {
+    // Simple floor clamp - only if NO other collision was found AND we are very low
+    if (!this.character.isGrounded && this.character.position.y < -10) {
       this.character.position.set(0, 5, 0);
       this.character.velocity.set(0, 0, 0);
     }
   }
 
-  private checkCollision(axis: 'horizontal' | 'vertical') {
+  private checkCollision(axis: 'horizontal' | 'vertical'): boolean {
     const charBox = new THREE.Box3().setFromObject(this.character);
     // Shrink slightly
     charBox.min.addScalar(0.01);
@@ -85,6 +89,9 @@ export class PhysicsSystem {
 
     const voxels = this.levelManager.getAllVoxels();
     const charSize = this.character.getSize();
+
+    // Track if we found ANY collision in this pass
+    let collisionFound = false;
 
     for (const voxel of voxels) {
       const voxelPos = voxel.position;
@@ -127,42 +134,46 @@ export class PhysicsSystem {
       }
 
       if (isOverlapping) {
+        collisionFound = true; // Mark as found
+        
         // Goal Detection (Task 4.4)
         if (voxel.userData.type === VoxelType.GOAL) {
           console.log("GOAL REACHED!");
           if (this.onGoalReached) {
             this.onGoalReached();
           }
-          // alert("Victory! You reached the goal!");
-          
-          // Reset?
-          this.character.position.set(0, 5, 0);
-          return;
+          // Do NOT reset position on victory
+          return true;
         }
 
         // Resolve Collision
         if (axis === 'vertical') {
            if (this.character.velocity.y < 0) {
-             // Landing
-             this.character.position.y = vMaxY + charSize/2;
-             this.character.isGrounded = true;
-             this.character.velocity.y = 0;
+             // Check if we were previously above the block to confirm landing
+             // If we were not above, it's a side collision (handled by horizontal) or a corner glitch
+             const wasAbove = this.prevPosition.y >= vMaxY - 0.1; // 0.1 tolerance
 
-             // DEPTH SNAPPING: Snap player to the platform's depth to ensure stability on rotation
-             if (this.viewState === ViewState.FRONT || this.viewState === ViewState.BACK) {
-                // Snap Z to block's Z
-                this.character.position.z = voxelPos.z;
-             } else {
-                // Snap X to block's X
-                this.character.position.x = voxelPos.x;
+             if (wasAbove) {
+                // Landing
+                this.character.position.y = vMaxY + charSize/2;
+                this.character.isGrounded = true;
+                this.character.velocity.y = 0;
+   
+                // DEPTH SNAPPING
+                if (this.viewState === ViewState.FRONT || this.viewState === ViewState.BACK) {
+                   this.character.position.z = voxelPos.z;
+                } else {
+                   this.character.position.x = voxelPos.x;
+                }
+                return true; // Stop checking after landing
              }
-
+             // If not above, treat as NO COLLISION for vertical purposes (let gravity act)
            } else if (this.character.velocity.y > 0) {
              // Ceiling
              this.character.position.y = vMinY - charSize/2;
              this.character.velocity.y = 0;
+             return true;
            }
-           return; // Stop checking vertical
         } else {
            // Horizontal Resolution
            if (this.viewState === ViewState.FRONT || this.viewState === ViewState.BACK) {
@@ -182,9 +193,10 @@ export class PhysicsSystem {
               }
               this.character.velocity.z = 0;
            }
-           return; // Stop checking horizontal
+           return true; // Stop checking horizontal
         }
       }
     }
+    return collisionFound;
   }
 }

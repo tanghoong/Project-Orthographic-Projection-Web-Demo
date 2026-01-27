@@ -88,6 +88,9 @@ export class Engine {
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
+    // Optimize shadow map
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
     this.scene.add(dirLight);
   }
 

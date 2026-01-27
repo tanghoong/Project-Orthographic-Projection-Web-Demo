@@ -19,6 +19,13 @@ export class Character extends THREE.Mesh {
     
     this.castShadow = true;
     this.receiveShadow = true;
+    
+    // Ensure render order to prevent flickering/z-fighting issues
+    // or set depthTest to false if we want "X-Ray" (but that's extreme)
+    // Instead, we can manage renderOrder if needed, but for occlusion transparency:
+    
+    // This will be managed by a system, but setting a default renderOrder can help
+    this.renderOrder = 1;
 
     // Add eye or detail to indicate forward direction
     const eyeGeo = new THREE.BoxGeometry(size * 0.2, size * 0.2, size * 0.1);

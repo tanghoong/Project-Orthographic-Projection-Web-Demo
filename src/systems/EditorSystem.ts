@@ -14,7 +14,7 @@ export class EditorSystem {
   
   private currentType: VoxelType = VoxelType.SOLID;
   private isEraserMode: boolean = false; // Key 5 or Alt key
-  private isCursorMode: boolean = false; // Key 0
+  private isCursorMode: boolean = true; // Key 0 - Default to Cursor Mode
   private isAltDown: boolean = false;
   private isSpaceDown: boolean = false; // Space key for OrbitControls
   private enabled: boolean = true;
@@ -47,10 +47,8 @@ export class EditorSystem {
 
     this.setupInputs();
     
-    // Initially disable OrbitControls, enable only when Space is held (or if we want default behavior)
-    // Actually, user requested: "Hold Space to activate map manipulation mode".
-    // This implies default is painting, not rotating.
-    this.engine.getControls().enabled = false;
+    // Default to Cursor Mode: Enable OrbitControls
+    this.engine.getControls().enabled = true;
   }
 
   public setEnabled(enabled: boolean): void {
@@ -135,6 +133,8 @@ export class EditorSystem {
   public setCursorMode() {
     this.isCursorMode = true;
     this.isEraserMode = false;
+    this.engine.getControls().enabled = true; // Enable OrbitControls in Cursor Mode
+    this.updateGhostColor(); // Update highlight to match cursor mode (or hide it)
     this.updateVisuals();
     console.log("Cursor Mode Active");
   }
@@ -143,6 +143,7 @@ export class EditorSystem {
     this.currentType = type;
     this.isEraserMode = false;
     this.isCursorMode = false;
+    this.engine.getControls().enabled = false; // Disable OrbitControls in Brush Mode
     this.updateGhostColor();
     this.updateVisuals();
     console.log(`Brush set to: ${VoxelType[type]}`);
@@ -151,23 +152,35 @@ export class EditorSystem {
   public setEraser() {
     this.isEraserMode = true;
     this.isCursorMode = false;
+    this.engine.getControls().enabled = false; // Disable OrbitControls in Eraser Mode
     this.updateVisuals();
     console.log("Eraser Mode Active");
   }
 
   private updateGhostColor() {
     const material = this.ghostMesh.material as THREE.MeshBasicMaterial;
-    switch (this.currentType) {
-      case VoxelType.SOLID: material.color.setHex(0x4caf50); break;
-      case VoxelType.PLATFORM: material.color.setHex(0x2196f3); break;
-      case VoxelType.SPAWN: material.color.setHex(0xffeb3b); break;
-      case VoxelType.GOAL: material.color.setHex(0xf44336); break;
+    if (this.isCursorMode) {
+        material.color.setHex(0xaaaaaa); // Grey for Cursor/0
+    } else {
+        switch (this.currentType) {
+          case VoxelType.SOLID: material.color.setHex(0x4caf50); break;
+          case VoxelType.PLATFORM: material.color.setHex(0x2196f3); break;
+          case VoxelType.SPAWN: material.color.setHex(0xffeb3b); break;
+          case VoxelType.GOAL: material.color.setHex(0xf44336); break;
+        }
     }
   }
 
   private onMouseDown(event: MouseEvent): void {
-    if (event.button !== 0) return; // Only left click
     if (!this.enabled) return;
+    
+    // Right Click for Undo
+    if (event.button === 2) {
+      this.levelManager.undo();
+      return;
+    }
+
+    if (event.button !== 0) return; // Only left click for drawing
     if (this.isCursorMode) return; // Do nothing in cursor mode
     if (this.isSpaceDown) return; // Do nothing if rotating camera
 
