@@ -216,7 +216,8 @@ Project-Orthographic-Projection-Web-Demo/
 ├── docs/
 │   ├── PRD.md                  # Product Requirements Document
 │   ├── MVP-ROADMAP.md          # Development roadmap with sprints
-│   └── SPRINT-TRACKER.md       # Real-time sprint progress
+│   ├── SPRINT-TRACKER.md       # Real-time sprint progress
+│   └── QUICK-REFERENCE.md      # Quick reference for key concepts & commands
 ├── src/                        # Source code (coming in Sprint 1)
 │   ├── core/                   # Game engine core
 │   ├── modes/                  # Play/Edit mode implementations
