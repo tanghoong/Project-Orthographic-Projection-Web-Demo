@@ -3,11 +3,12 @@ import { Character } from '../entities/Character';
 import { LevelManager } from './LevelManager';
 import { ViewState } from '../utils/Enums';
 import { VoxelType } from '../entities/Voxel';
+import { CONSTANTS } from '../utils/Constants';
 
 export class PhysicsSystem {
   private character: Character;
   private levelManager: LevelManager;
-  private gravity: number = 30;
+  private gravity: number = CONSTANTS.PHYSICS.GRAVITY;
   private viewState: ViewState = ViewState.FRONT;
   private inputX: number = 0; // -1, 0, 1
   public onGoalReached: (() => void) | null = null;
@@ -50,7 +51,7 @@ export class PhysicsSystem {
   }
 
   public jump(): void {
-    this.character.velocity.y = 12;
+    this.character.velocity.y = CONSTANTS.PHYSICS.JUMP_FORCE;
   }
 
   public update(dt: number): void {
@@ -58,7 +59,7 @@ export class PhysicsSystem {
     this.prevPosition.copy(this.character.position);
 
     // Apply Horizontal Movement based on View State
-    const speed = 10;
+    const speed = CONSTANTS.PHYSICS.MOVE_SPEED;
     const moveVel = this.inputX * speed;
 
     // Reset horizontal velocity first

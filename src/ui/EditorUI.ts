@@ -1,13 +1,15 @@
 import { EditorSystem } from '../systems/EditorSystem';
 import { LevelManager } from '../systems/LevelManager';
 import { VoxelType } from '../entities/Voxel';
-import { GameMode } from '../utils/Enums';
+import { GameMode, GameEventType } from '../utils/Enums';
+import { EventManager } from '../core/EventManager';
 
 export class EditorUI {
   private editorSystem: EditorSystem;
   private levelManager: LevelManager;
   private container: HTMLElement;
   private compassArrow: HTMLElement | null = null;
+  private eventManager: EventManager;
   
   // Callbacks
   public onRotateLeft: (() => void) | null = null;
@@ -18,6 +20,7 @@ export class EditorUI {
     this.editorSystem = editorSystem;
     this.levelManager = levelManager;
     this.container = document.getElementById(containerId)!;
+    this.eventManager = EventManager.getInstance();
     
     this.render();
     this.attachEvents();
@@ -26,6 +29,12 @@ export class EditorUI {
     
     // Set initial mode class
     this.container.classList.add('edit-mode');
+
+    // Subscribe to Game Events
+    this.eventManager.on(GameEventType.SCORE_UPDATED, (score: any) => this.updateScore(score));
+    this.eventManager.on(GameEventType.GOAL_REACHED, () => this.showNotification("Goal Reached! +100 Points"));
+    this.eventManager.on(GameEventType.GAME_MODE_CHANGED, (mode: any) => this.setGameMode(mode));
+    this.eventManager.on(GameEventType.CAMERA_ROTATED, (angle: any) => this.updateCompass(angle));
   }
 
   public setGameMode(mode: GameMode): void {
@@ -140,12 +149,12 @@ export class EditorUI {
         const start = (e: Event) => {
             e.preventDefault();
             btn.classList.add('pressed');
-            if (this.onInput) this.onInput(key, true);
+            this.eventManager.emit(GameEventType.INPUT_MOVE, { key, pressed: true });
         };
         const end = (e: Event) => {
             e.preventDefault();
             btn.classList.remove('pressed');
-            if (this.onInput) this.onInput(key, false);
+            this.eventManager.emit(GameEventType.INPUT_MOVE, { key, pressed: false });
         };
 
         btn.addEventListener('mousedown', start);
@@ -158,20 +167,20 @@ export class EditorUI {
     const rotLeft = document.getElementById('btn-rot-left');
     const rotRight = document.getElementById('btn-rot-right');
 
-    const bindClick = (el: HTMLElement | null, callbackName: 'onRotateLeft' | 'onRotateRight') => {
+    const bindClick = (el: HTMLElement | null, direction: number) => {
         if (!el) return;
         const handler = (e: Event) => {
              e.preventDefault();
              el.classList.add('pressed');
              setTimeout(() => el.classList.remove('pressed'), 100);
-             if (this[callbackName]) this[callbackName]!();
+             this.eventManager.emit(GameEventType.INPUT_ROTATE, { direction });
         };
-        el.addEventListener('click', handler); // Use click for simple trigger
+        el.addEventListener('click', handler);
         el.addEventListener('touchstart', handler);
     };
 
-    bindClick(rotLeft, 'onRotateLeft');
-    bindClick(rotRight, 'onRotateRight');
+    bindClick(rotLeft, 1);
+    bindClick(rotRight, -1);
 
     // Block Selection
     const buttons = this.container.querySelectorAll('.block-btn');

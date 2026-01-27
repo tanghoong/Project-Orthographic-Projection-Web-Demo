@@ -24,15 +24,19 @@ interface Command {
   voxelType: VoxelType; // Needed for 'remove' to know what to put back, and 'add' to know what was added
 }
 
+import { VoxelRenderer } from './VoxelRenderer';
+
 export class LevelManager {
-  private scene: THREE.Scene;
+  // private scene: THREE.Scene;
   private voxels: Map<string, Voxel>;
   private spawnPoint: THREE.Vector3 | null = null;
   private history: Command[] = [];
+  private renderer: VoxelRenderer;
 
   constructor(scene: THREE.Scene) {
-    this.scene = scene;
+    // this.scene = scene;
     this.voxels = new Map();
+    this.renderer = new VoxelRenderer(scene);
   }
 
   private getKey(x: number, y: number, z: number): string {
@@ -69,7 +73,8 @@ export class LevelManager {
     const position = new THREE.Vector3(x, y, z);
     const voxel = new Voxel(position, type);
     
-    this.scene.add(voxel);
+    // this.scene.add(voxel); // Removed: Handled by VoxelRenderer
+    this.renderer.addVoxel(x, y, z, type);
     this.voxels.set(key, voxel);
     
     if (recordHistory) {
@@ -96,10 +101,7 @@ export class LevelManager {
       this.spawnPoint = null;
     }
 
-    this.scene.remove(voxel);
-    // Dispose geometry/material to prevent memory leaks
-    voxel.geometry.dispose();
-    (voxel.material as THREE.Material).dispose();
+    this.renderer.removeVoxel(x, y, z, type);
     
     this.voxels.delete(key);
 
@@ -132,13 +134,14 @@ export class LevelManager {
   }
 
   public clear(): void {
-    // Create a copy of values to avoid iterator invalidation issues during deletion
-    const allVoxels = Array.from(this.voxels.values());
-    for (const voxel of allVoxels) {
-      this.removeVoxel(voxel.position.x, voxel.position.y, voxel.position.z, false);
-    }
+    this.renderer.clear();
+    this.voxels.clear();
     this.spawnPoint = null;
     this.history = []; // Clear history on reset
+  }
+
+  public getMeshes(): THREE.InstancedMesh[] {
+      return this.renderer.getMeshes();
   }
 
   public serialize(): string {

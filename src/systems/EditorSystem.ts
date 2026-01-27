@@ -217,8 +217,8 @@ export class EditorSystem {
 
   private getIntersection(): THREE.Intersection | null {
     this.raycaster.setFromCamera(this.mouse, this.engine.getCamera());
-    const voxels = this.levelManager.getAllVoxels();
-    const intersects = this.raycaster.intersectObjects(voxels, false);
+    const meshes = this.levelManager.getMeshes();
+    const intersects = this.raycaster.intersectObjects(meshes, false);
     return intersects.length > 0 ? intersects[0] : null;
   }
 
@@ -250,7 +250,14 @@ export class EditorSystem {
         // Highlight existing block
         this.ghostMesh.visible = false;
         this.highlightBox.visible = true;
-        this.highlightBox.position.copy(intersect.object.position);
+        
+        const mesh = intersect.object as THREE.InstancedMesh;
+        if (mesh.isInstancedMesh && intersect.instanceId !== undefined) {
+             const matrix = new THREE.Matrix4();
+             mesh.getMatrixAt(intersect.instanceId, matrix);
+             const p = new THREE.Vector3().setFromMatrixPosition(matrix);
+             this.highlightBox.position.copy(p);
+        }
       } else {
         // Show ghost block adjacent
         this.ghostMesh.visible = true;
