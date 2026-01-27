@@ -61,11 +61,28 @@ body {
   pointer-events: none;
 }
 
-/* Compass is always visible now, per requirement */
-.compass-container {
+/* --- Top HUD (Compass & Scoreboard) --- */
+#top-hud {
   position: absolute;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0; /* Hidden by default (Edit Mode) */
+  transition: opacity 0.3s;
+}
+
+/* Show Top HUD only in Play Mode */
+.play-mode #top-hud {
+  opacity: 1;
+}
+
+.compass-container {
+  position: relative;
   width: 60px;
   height: 60px;
   pointer-events: auto;
@@ -75,11 +92,8 @@ body {
   justify-content: center;
   align-items: center;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  z-index: 20; /* Ensure it is above other UI */
-  transition: opacity 0.3s;
 }
 
-/* Ensure centering context for the arrow */
 .compass-inner {
   position: relative;
   width: 0;
@@ -91,21 +105,18 @@ body {
 
 .compass-arrow {
   position: absolute;
-  /* Center the pivot point */
   left: 0;
   top: 0;
   width: 0;
   height: 0;
-  /* Pivot around the center point where N/S meet */
   transform-origin: 0 0; 
 }
 
-/* North (Red) - Points UP from center */
 .compass-arrow::before {
   content: '';
   position: absolute;
   bottom: 0;
-  left: -8px; /* Half width */
+  left: -8px; 
   width: 0;
   height: 0;
   border-left: 8px solid transparent;
@@ -113,12 +124,11 @@ body {
   border-bottom: 35px solid #f44336;
 }
 
-/* South (White) - Points DOWN from center */
 .compass-arrow::after {
   content: '';
   position: absolute;
   top: 0;
-  left: -8px; /* Half width */
+  left: -8px;
   width: 0;
   height: 0;
   border-left: 8px solid transparent;
@@ -137,6 +147,109 @@ body {
   text-shadow: 0 1px 2px black;
 }
 
+/* Scoreboard */
+#scoreboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+}
+
+.score-value {
+  color: #f44336; /* Red */
+  font-size: 32px;
+  text-shadow: 2px 2px 0px #000;
+  border: 3px solid #f44336;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+}
+
+/* --- Mobile Controls (Bottom) --- */
+.mobile-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  pointer-events: none;
+  display: flex;
+  justify-content: center; /* Center everything */
+  align-items: center;     /* Align vertically */
+  gap: 40px;               /* Space between Rot buttons and D-Pad */
+  padding: 0 20px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 30;
+}
+
+.play-mode .mobile-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.d-pad {
+  position: relative;
+  width: 140px; /* Slightly larger */
+  height: 140px;
+  background: rgba(0, 0, 0, 0.3); /* Slightly darker */
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.control-btn {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.control-btn:active, .control-btn.pressed {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0.95);
+  border-color: rgba(255, 255, 255, 0.9);
+  color: #000;
+}
+
+/* D-Pad Positioning (Centered and Compact) */
+/* Size: 45x45 buttons */
+.d-pad .control-btn {
+  width: 45px;
+  height: 45px;
+}
+
+.btn-up { top: 5px; left: 50%; transform: translateX(-50%); }
+.btn-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.btn-left { top: 50%; left: 5px; transform: translateY(-50%); }
+.btn-right { top: 50%; right: 5px; transform: translateY(-50%); }
+
+/* Rotate Buttons */
+.btn-rotate {
+  position: relative; /* Relative to flex container */
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  font-size: 28px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Toolbar (Edit Mode) --- */
 .toolbar {
   background: rgba(0, 0, 0, 0.7);
   padding: 10px;
@@ -171,19 +284,19 @@ body {
   display: flex;
   gap: 10px;
   align-items: center;
-  flex-wrap: wrap; /* Allow wrapping on small screens */
+  flex-wrap: wrap; 
 }
 
 .bottom-bar {
   align-self: center;
 }
 
-.block-btn[data-type="0"] { border-bottom: 3px solid #aaaaaa; } /* Cursor */
+.block-btn[data-type="0"] { border-bottom: 3px solid #aaaaaa; } 
 .block-btn[data-type="1"] { border-bottom: 3px solid #4caf50; }
 .block-btn[data-type="2"] { border-bottom: 3px solid #2196f3; }
 .block-btn[data-type="3"] { border-bottom: 3px solid #ffeb3b; }
 .block-btn[data-type="4"] { border-bottom: 3px solid #f44336; }
-.block-btn[data-type="5"] { border-bottom: 3px solid #ffffff; } /* Eraser */
+.block-btn[data-type="5"] { border-bottom: 3px solid #ffffff; } 
 
 .save-load-container {
   display: flex;

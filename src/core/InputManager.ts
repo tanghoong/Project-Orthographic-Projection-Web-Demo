@@ -39,6 +39,10 @@ export class InputManager {
     return this.keys.get(key) || false;
   }
 
+  public setVirtualKey(key: string, pressed: boolean): void {
+    this.keys.set(key, pressed);
+  }
+
   public isMouseButtonPressed(button: number): boolean {
     return this.mouseButtons.get(button) || false;
   }

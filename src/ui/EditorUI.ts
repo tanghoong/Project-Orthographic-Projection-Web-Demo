@@ -8,6 +8,11 @@ export class EditorUI {
   private levelManager: LevelManager;
   private container: HTMLElement;
   private compassArrow: HTMLElement | null = null;
+  
+  // Callbacks
+  public onRotateLeft: (() => void) | null = null;
+  public onRotateRight: (() => void) | null = null;
+  public onInput: ((key: string, pressed: boolean) => void) | null = null;
 
   constructor(containerId: string, editorSystem: EditorSystem, levelManager: LevelManager) {
     this.editorSystem = editorSystem;
@@ -85,11 +90,27 @@ export class EditorUI {
         <button id="btn-export">Export JSON</button>
       </div>
       
-      <div class="compass-container">
-        <div class="compass-label">N</div>
-        <div class="compass-inner">
-            <div class="compass-arrow" id="compass-arrow"></div>
+      <div id="top-hud">
+        <div id="scoreboard">
+           <div class="score-value" id="score-display">0</div>
         </div>
+        <div class="compass-container">
+          <div class="compass-label">N</div>
+          <div class="compass-inner">
+              <div class="compass-arrow" id="compass-arrow"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mobile-controls">
+        <div class="control-btn btn-rotate" id="btn-rot-left">↺</div>
+        <div class="d-pad">
+           <div class="control-btn btn-up" data-key="ArrowUp">↑</div>
+           <div class="control-btn btn-down" data-key="ArrowDown">↓</div>
+           <div class="control-btn btn-left" data-key="ArrowLeft">←</div>
+           <div class="control-btn btn-right" data-key="ArrowRight">→</div>
+        </div>
+        <div class="control-btn btn-rotate" id="btn-rot-right">↻</div>
       </div>
 
       <div class="toolbar bottom-bar">
@@ -105,7 +126,53 @@ export class EditorUI {
     this.compassArrow = document.getElementById('compass-arrow');
   }
 
+  public updateScore(score: number): void {
+    const el = document.getElementById('score-display');
+    if (el) el.textContent = score.toString();
+  }
+
   private attachEvents(): void {
+    // Mobile Controls
+    const dpadBtns = this.container.querySelectorAll('.d-pad .control-btn');
+    dpadBtns.forEach(btn => {
+        const key = (btn as HTMLElement).dataset.key!;
+        
+        const start = (e: Event) => {
+            e.preventDefault();
+            btn.classList.add('pressed');
+            if (this.onInput) this.onInput(key, true);
+        };
+        const end = (e: Event) => {
+            e.preventDefault();
+            btn.classList.remove('pressed');
+            if (this.onInput) this.onInput(key, false);
+        };
+
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('touchstart', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('touchend', end);
+        btn.addEventListener('mouseleave', end);
+    });
+
+    const rotLeft = document.getElementById('btn-rot-left');
+    const rotRight = document.getElementById('btn-rot-right');
+
+    const bindClick = (el: HTMLElement | null, callbackName: 'onRotateLeft' | 'onRotateRight') => {
+        if (!el) return;
+        const handler = (e: Event) => {
+             e.preventDefault();
+             el.classList.add('pressed');
+             setTimeout(() => el.classList.remove('pressed'), 100);
+             if (this[callbackName]) this[callbackName]!();
+        };
+        el.addEventListener('click', handler); // Use click for simple trigger
+        el.addEventListener('touchstart', handler);
+    };
+
+    bindClick(rotLeft, 'onRotateLeft');
+    bindClick(rotRight, 'onRotateRight');
+
     // Block Selection
     const buttons = this.container.querySelectorAll('.block-btn');
     buttons.forEach(btn => {

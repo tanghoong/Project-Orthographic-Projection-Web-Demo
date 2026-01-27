@@ -23,6 +23,20 @@ export class PhysicsSystem {
     // When view changes, zero out velocity
     this.character.velocity.set(0, this.character.velocity.y, 0);
 
+    // Rotate character to face the new camera view
+    // FRONT (0) -> 0
+    // RIGHT (1) -> -PI/2
+    // BACK (2) -> -PI
+    // LEFT (3) -> -3PI/2 (or PI/2)
+    let targetRot = 0;
+    switch(state) {
+        case ViewState.FRONT: targetRot = 0; break;
+        case ViewState.RIGHT: targetRot = -Math.PI / 2; break;
+        case ViewState.BACK: targetRot = -Math.PI; break;
+        case ViewState.LEFT: targetRot = -Math.PI * 1.5; break;
+    }
+    this.character.rotation.y = targetRot;
+
     // Position Snapping (Task 4.3)
     this.snapToVisualDepth();
   }
@@ -64,6 +78,22 @@ export class PhysicsSystem {
     // Integrate Position
     const delta = this.character.velocity.clone().multiplyScalar(dt);
     
+    // Update Eye State & Facing
+    if (!this.character.isGrounded) {
+      this.character.setEyeState('jump');
+    } else if (Math.abs(this.inputX) > 0.1) {
+      // Determine look direction based on input relative to screen
+      this.character.setEyeState(this.inputX > 0 ? 'lookRight' : 'lookLeft');
+      
+      // Optional: Rotate character to face movement? 
+      // For now, let's keep the box aligned but maybe flip texture/eyes?
+      // Actually, since the character is a 3D box, if we rotate it, we might mess up AABB checks if not careful.
+      // But AABB is calculated from object.
+      // Let's just move pupils for now as requested.
+    } else {
+      this.character.setEyeState('idle');
+    }
+
     // Collision Detection Steps
     // 1. Move Horizontal
     this.character.position.add(new THREE.Vector3(delta.x, 0, delta.z));

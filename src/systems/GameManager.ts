@@ -34,6 +34,9 @@ export class GameManager {
   
   // Input State
   private wasJumpPressed: boolean = false;
+  
+  // Game State
+  private score: number = 0;
 
   constructor(engine: Engine, levelManager: LevelManager, editorSystem: EditorSystem) {
     this.engine = engine;
@@ -52,6 +55,13 @@ export class GameManager {
 
   public setUI(ui: EditorUI) {
       this.ui = ui;
+      
+      // Bind UI Callbacks
+      this.ui.onRotateLeft = () => this.rotateCamera(1);
+      this.ui.onRotateRight = () => this.rotateCamera(-1);
+      this.ui.onInput = (key: string, pressed: boolean) => {
+          this.inputManager.setVirtualKey(key, pressed);
+      };
   }
 
   public toggleMode(): void {
@@ -101,6 +111,20 @@ export class GameManager {
     // Initialize Physics
     this.physicsSystem = new PhysicsSystem(this.character, this.levelManager);
     this.physicsSystem.setViewState(this.viewState);
+    
+    // Reset Score
+    this.score = 0;
+    if (this.ui) this.ui.updateScore(this.score);
+
+    // Handle Goal
+    this.physicsSystem.onGoalReached = () => {
+       this.score += 100;
+       if (this.ui) {
+         this.ui.updateScore(this.score);
+         this.ui.showNotification("Goal Reached! +100 Points");
+       }
+       // Optional: Play Sound
+    };
   }
 
   private enterEditMode(): void {
