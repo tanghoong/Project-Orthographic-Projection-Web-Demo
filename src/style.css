@@ -1,0 +1,56 @@
+#ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.toolbar {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+}
+
+.toolbar button {
+  background: #444;
+  color: white;
+  border: 1px solid #666;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.toolbar button:hover {
+  background: #666;
+}
+
+.toolbar button.active {
+  background: #2196f3;
+  border-color: #64b5f6;
+}
+
+.top-bar {
+  align-self: flex-start;
+}
+
+.bottom-bar {
+  align-self: center;
+}
+
+.block-btn[data-type="1"] { border-bottom: 3px solid #4caf50; }
+.block-btn[data-type="2"] { border-bottom: 3px solid #2196f3; }
+.block-btn[data-type="3"] { border-bottom: 3px solid #ffeb3b; }
+.block-btn[data-type="4"] { border-bottom: 3px solid #f44336; }
+.block-btn[data-type="5"] { border-bottom: 3px solid #ffffff; } /* Eraser */
