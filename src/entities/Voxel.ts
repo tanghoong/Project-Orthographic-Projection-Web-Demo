@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 
 export enum VoxelType {
-  SOLID = 1,
-  PLATFORM = 2,
-  SPAWN = 3,
-  GOAL = 4
+  SOLID = 2,      // Ground block
+  PLATFORM = 3,   // Cloud block (floating)
+  LADDER = 4,     // Ladder (climb up/down)
+  TRAP = 5,       // Boom trap (respawn)
+  KEY = 6,        // Floating key (collectible)
+  DOOR = 7,       // Exit door (requires all keys)
+  SPAWN = 8,      // Start point
+  GOAL = 9        // End game point
 }
 
 export class Voxel {

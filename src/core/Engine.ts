@@ -14,6 +14,8 @@ export class Engine {
   private inputManager: InputManager;
   private gridHelper: THREE.GridHelper;
   private axesHelper: THREE.AxesHelper;
+  private waterPlane: THREE.Mesh | null = null;
+  private boundaryBox: THREE.LineSegments | null = null;
 
   constructor(containerId: string) {
     // Input Manager
@@ -60,6 +62,10 @@ export class Engine {
     // Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.screenSpacePanning = false;
+    this.controls.minZoom = 0.5;
+    this.controls.maxZoom = 3;
     this.controls.enabled = true; // Default enabled, but controlled by Game/Editor systems
 
     // Lights
@@ -71,6 +77,12 @@ export class Engine {
     
     this.axesHelper = new THREE.AxesHelper(5);
     this.scene.add(this.axesHelper);
+    
+    // Add water plane below ground level (sea)
+    this.createWaterPlane();
+    
+    // Add world boundary box
+    this.createBoundaryBox();
 
     // Resize Handler
     window.addEventListener('resize', this.onWindowResize.bind(this));
@@ -79,6 +91,48 @@ export class Engine {
   public setHelpersVisibility(visible: boolean): void {
     this.gridHelper.visible = visible;
     this.axesHelper.visible = visible;
+    if (this.waterPlane) this.waterPlane.visible = visible;
+    if (this.boundaryBox) this.boundaryBox.visible = visible;
+  }
+  
+  private createWaterPlane(): void {
+    // Create water plane at y = -0.5 (just below ground level)
+    const geometry = new THREE.PlaneGeometry(
+      CONSTANTS.WORLD.WIDTH,
+      CONSTANTS.WORLD.DEPTH
+    );
+    const material = new THREE.MeshStandardMaterial({
+      color: CONSTANTS.EDITOR.WATER_COLOR,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    
+    this.waterPlane = new THREE.Mesh(geometry, material);
+    this.waterPlane.rotation.x = -Math.PI / 2; // Rotate to horizontal
+    this.waterPlane.position.y = -0.5; // Just below ground level
+    this.waterPlane.receiveShadow = true;
+    this.scene.add(this.waterPlane);
+  }
+  
+  private createBoundaryBox(): void {
+    // Create wireframe box showing world boundaries
+    const geometry = new THREE.BoxGeometry(
+      CONSTANTS.WORLD.WIDTH,
+      CONSTANTS.WORLD.HEIGHT,
+      CONSTANTS.WORLD.DEPTH
+    );
+    const edges = new THREE.EdgesGeometry(geometry);
+    const material = new THREE.LineBasicMaterial({ 
+      color: 0x888888,
+      transparent: true,
+      opacity: 0.3
+    });
+    
+    this.boundaryBox = new THREE.LineSegments(edges, material);
+    // Position box so bottom is at y=0, centered at origin
+    this.boundaryBox.position.y = CONSTANTS.WORLD.HEIGHT / 2;
+    this.scene.add(this.boundaryBox);
   }
 
   private setupLights(): void {
@@ -145,5 +199,41 @@ export class Engine {
 
   public getInputManager(): InputManager {
     return this.inputManager;
+  }
+  
+  // Camera View Presets
+  public setCameraView(view: 'isometric' | 'top' | 'front' | 'side' | 'close'): void {
+    let targetPos: { x: number, y: number, z: number };
+    
+    switch (view) {
+      case 'isometric':
+        targetPos = CONSTANTS.CAMERA.VIEW_PRESETS.ISOMETRIC;
+        break;
+      case 'top':
+        targetPos = CONSTANTS.CAMERA.VIEW_PRESETS.TOP;
+        break;
+      case 'front':
+        targetPos = CONSTANTS.CAMERA.VIEW_PRESETS.FRONT;
+        break;
+      case 'side':
+        targetPos = CONSTANTS.CAMERA.VIEW_PRESETS.SIDE;
+        break;
+      case 'close':
+        targetPos = CONSTANTS.CAMERA.VIEW_PRESETS.CLOSE;
+        break;
+      default:
+        targetPos = CONSTANTS.CAMERA.INITIAL_POSITION;
+    }
+    
+    this.camera.position.set(targetPos.x, targetPos.y, targetPos.z);
+    this.camera.lookAt(0, 0, 0);
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
+  }
+  
+  public resetCamera(): void {
+    this.setCameraView('isometric');
+    this.camera.zoom = 1;
+    this.camera.updateProjectionMatrix();
   }
 }

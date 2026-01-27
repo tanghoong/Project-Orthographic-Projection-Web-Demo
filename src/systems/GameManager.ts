@@ -73,6 +73,12 @@ export class GameManager {
 
   private enterPlayMode(): void {
     console.log("Entering Play Mode");
+    
+    // Auto-save current level before playing
+    if (CONSTANTS.EDITOR.AUTO_SAVE_ENABLED) {
+      this.autoSaveLevel();
+    }
+    
     this.mode = GameMode.PLAY;
     
     // UI Update
@@ -170,10 +176,13 @@ export class GameManager {
         // Pass intent to physics
         this.physicsSystem.setInput(moveDir);
 
-        // Jump Logic (with Debounce)
-        const isJumpPressed = this.inputManager.isKeyPressed(' ') || this.inputManager.isKeyPressed('w');
+        // Jump Logic (with Jump Buffering & Coyote Time)
+        const isJumpPressed = this.inputManager.isKeyPressed(' ') || 
+                             this.inputManager.isKeyPressed('w') || 
+                             this.inputManager.isKeyPressed('ArrowUp');
         
-        if (isJumpPressed && !this.wasJumpPressed && this.character.isGrounded) {
+        // Trigger jump on button press (PhysicsSystem handles buffering/coyote time)
+        if (isJumpPressed && !this.wasJumpPressed) {
            this.physicsSystem.jump();
         }
         this.wasJumpPressed = isJumpPressed;
@@ -232,5 +241,31 @@ export class GameManager {
             this.character.renderOrder = 0;
         }
       }
+  }
+  
+  private autoSaveLevel(): void {
+    try {
+      const levelData = this.levelManager.serialize();
+      localStorage.setItem(CONSTANTS.EDITOR.AUTO_SAVE_KEY, levelData);
+      console.log('✅ Level auto-saved');
+      this.eventManager.emit(GameEventType.PRESET_LOADED, { message: 'Auto-saved' });
+    } catch (error) {
+      console.error('Failed to auto-save level:', error);
+    }
+  }
+  
+  public loadAutoSave(): boolean {
+    try {
+      const data = localStorage.getItem(CONSTANTS.EDITOR.AUTO_SAVE_KEY);
+      if (data) {
+        this.levelManager.deserialize(data);
+        console.log('✅ Auto-save loaded');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to load auto-save:', error);
+      return false;
+    }
   }
 }

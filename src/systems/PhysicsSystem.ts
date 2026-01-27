@@ -13,6 +13,11 @@ export class PhysicsSystem {
   private inputX: number = 0; // -1, 0, 1
   public onGoalReached: (() => void) | null = null;
   private prevPosition: THREE.Vector3 = new THREE.Vector3();
+  
+  // Jump Buffer & Coyote Time
+  private jumpBuffer: number = 0;          // Time remaining on jump buffer
+  private coyoteTime: number = 0;          // Time remaining on coyote time
+  private wasGroundedLastFrame: boolean = false;
 
   constructor(character: Character, levelManager: LevelManager) {
     this.character = character;
@@ -51,12 +56,23 @@ export class PhysicsSystem {
   }
 
   public jump(): void {
-    this.character.velocity.y = CONSTANTS.PHYSICS.JUMP_FORCE;
+    // Only jump if grounded or within coyote time
+    if (this.character.isGrounded || this.coyoteTime > 0) {
+      this.character.velocity.y = CONSTANTS.PHYSICS.JUMP_FORCE;
+      this.coyoteTime = 0; // Consume coyote time
+      this.jumpBuffer = 0; // Consume jump buffer
+    } else {
+      // Buffer the jump input
+      this.jumpBuffer = CONSTANTS.PHYSICS.JUMP_BUFFER_TIME;
+    }
   }
 
   public update(dt: number): void {
     // Store previous position for collision resolution
     this.prevPosition.copy(this.character.position);
+    
+    // Track grounded state for coyote time
+    this.wasGroundedLastFrame = this.character.isGrounded;
 
     // Apply Horizontal Movement based on View State
     const speed = CONSTANTS.PHYSICS.MOVE_SPEED;
@@ -75,6 +91,11 @@ export class PhysicsSystem {
 
     // Apply Gravity
     this.character.velocity.y -= this.gravity * dt;
+    
+    // Cap falling speed to terminal velocity
+    if (this.character.velocity.y < -CONSTANTS.PHYSICS.TERMINAL_VELOCITY) {
+      this.character.velocity.y = -CONSTANTS.PHYSICS.TERMINAL_VELOCITY;
+    }
 
     // Integrate Position
     const delta = this.character.velocity.clone().multiplyScalar(dt);
@@ -96,6 +117,7 @@ export class PhysicsSystem {
     }
 
     // Collision Detection Steps
+    // IMPORTANT: Check horizontal FIRST to prevent phase-through on thin platforms
     // 1. Move Horizontal
     this.character.position.add(new THREE.Vector3(delta.x, 0, delta.z));
     this.checkCollision('horizontal');
@@ -103,7 +125,26 @@ export class PhysicsSystem {
     // 2. Move Vertical
     this.character.position.y += delta.y;
     this.character.isGrounded = false;
-    this.checkCollision('vertical'); // Returns true if collision handled
+    this.checkCollision('vertical');
+    
+    // Update Coyote Time: Give grace period when leaving platform
+    if (this.wasGroundedLastFrame && !this.character.isGrounded) {
+      this.coyoteTime = CONSTANTS.PHYSICS.COYOTE_TIME;
+    } else if (this.character.isGrounded) {
+      this.coyoteTime = 0;
+    } else if (this.coyoteTime > 0) {
+      this.coyoteTime -= dt;
+    }
+    
+    // Update Jump Buffer: Consume buffered jump if we land
+    if (this.jumpBuffer > 0) {
+      this.jumpBuffer -= dt;
+      if (this.character.isGrounded) {
+        // Execute buffered jump
+        this.character.velocity.y = CONSTANTS.PHYSICS.JUMP_FORCE;
+        this.jumpBuffer = 0;
+      }
+    }
 
     // Simple floor clamp - only if NO other collision was found AND we are very low
     if (!this.character.isGrounded && this.character.position.y < -10) {
@@ -114,9 +155,10 @@ export class PhysicsSystem {
 
   private checkCollision(axis: 'horizontal' | 'vertical'): boolean {
     const charBox = new THREE.Box3().setFromObject(this.character);
-    // Shrink slightly
-    charBox.min.addScalar(0.01);
-    charBox.max.subScalar(0.01);
+    // Shrink slightly to prevent floating point precision issues
+    const epsilon = 0.01;
+    charBox.min.addScalar(epsilon);
+    charBox.max.subScalar(epsilon);
 
     const voxels = this.levelManager.getAllVoxels();
     const charSize = this.character.getSize();
@@ -181,16 +223,17 @@ export class PhysicsSystem {
         if (axis === 'vertical') {
            if (this.character.velocity.y < 0) {
              // Check if we were previously above the block to confirm landing
-             // If we were not above, it's a side collision (handled by horizontal) or a corner glitch
-             const wasAbove = this.prevPosition.y >= vMaxY - 0.1; // 0.1 tolerance
+             // This prevents phase-through and false positives from side collisions
+             const tolerance = 0.15; // Increased tolerance for better detection
+             const wasAbove = this.prevPosition.y >= vMaxY - tolerance;
 
              if (wasAbove) {
-                // Landing
+                // Landing on platform
                 this.character.position.y = vMaxY + charSize/2;
                 this.character.isGrounded = true;
                 this.character.velocity.y = 0;
    
-                // DEPTH SNAPPING
+                // DEPTH SNAPPING: Align character to platform depth
                 if (this.viewState === ViewState.FRONT || this.viewState === ViewState.BACK) {
                    this.character.position.z = voxelPos.z;
                 } else {
@@ -200,7 +243,7 @@ export class PhysicsSystem {
              }
              // If not above, treat as NO COLLISION for vertical purposes (let gravity act)
            } else if (this.character.velocity.y > 0) {
-             // Ceiling
+             // Hitting ceiling - bounce down
              this.character.position.y = vMinY - charSize/2;
              this.character.velocity.y = 0;
              return true;

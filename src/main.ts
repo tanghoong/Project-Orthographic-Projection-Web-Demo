@@ -15,7 +15,7 @@ const engine = new Engine('game-container');
 const levelManager = new LevelManager(engine.getScene());
 const editorSystem = new EditorSystem(engine, levelManager);
 const gameManager = new GameManager(engine, levelManager, editorSystem);
-new EditorUI('ui-layer', editorSystem, levelManager);
+new EditorUI('ui-layer', editorSystem, levelManager, engine);
 // gameManager.setUI(ui); // Decoupled via EventManager
 
 // Add initial ground platform

@@ -49,10 +49,14 @@ export class VoxelRenderer {
   private getMaterial(type: VoxelType): THREE.Material {
     let color = 0x888888;
     switch (type) {
-      case VoxelType.SOLID: color = 0x4caf50; break; // Green
-      case VoxelType.PLATFORM: color = 0x2196f3; break; // Blue
-      case VoxelType.SPAWN: color = 0xffeb3b; break; // Yellow
-      case VoxelType.GOAL: color = 0xf44336; break; // Red
+      case VoxelType.SOLID: color = 0x8b4513; break;      // Brown - Ground
+      case VoxelType.PLATFORM: color = 0xe0f7fa; break;   // Light cyan - Cloud
+      case VoxelType.LADDER: color = 0xd2691e; break;     // Orange - Ladder
+      case VoxelType.TRAP: color = 0xff0000; break;       // Red - Trap
+      case VoxelType.KEY: color = 0xffd700; break;        // Gold - Key
+      case VoxelType.DOOR: color = 0x00ff00; break;       // Green - Door
+      case VoxelType.SPAWN: color = 0xffeb3b; break;      // Yellow - Start
+      case VoxelType.GOAL: color = 0x9c27b0; break;       // Purple - End
     }
     return new THREE.MeshStandardMaterial({ color });
   }

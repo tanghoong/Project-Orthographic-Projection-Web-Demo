@@ -3,10 +3,12 @@ import { LevelManager } from '../systems/LevelManager';
 import { VoxelType } from '../entities/Voxel';
 import { GameMode, GameEventType } from '../utils/Enums';
 import { EventManager } from '../core/EventManager';
+import { Engine } from '../core/Engine';
 
 export class EditorUI {
   private editorSystem: EditorSystem;
   private levelManager: LevelManager;
+  private engine: Engine;
   private container: HTMLElement;
   private compassArrow: HTMLElement | null = null;
   private eventManager: EventManager;
@@ -16,10 +18,11 @@ export class EditorUI {
   public onRotateRight: (() => void) | null = null;
   public onInput: ((key: string, pressed: boolean) => void) | null = null;
 
-  constructor(containerId: string, editorSystem: EditorSystem, levelManager: LevelManager) {
+  constructor(containerId: string, editorSystem: EditorSystem, levelManager: LevelManager, engine: Engine) {
     this.editorSystem = editorSystem;
     this.levelManager = levelManager;
-    this.container = document.getElementById(containerId)!;
+    this.engine = engine;
+    this.container = document.getElementById(containerId)!;;
     this.eventManager = EventManager.getInstance();
     
     this.render();
@@ -99,6 +102,46 @@ export class EditorUI {
         <button id="btn-export">Export JSON</button>
       </div>
       
+      <div id="build-height-panel" class="build-height-panel">
+        <div class="build-height-label">Build Height: Y = <span id="build-height-value">0</span></div>
+        <div class="build-height-controls">
+          <button id="btn-height-up" class="height-btn" title="PageUp">▲</button>
+          <button id="btn-height-down" class="height-btn" title="PageDown">▼</button>
+          <button id="btn-height-reset" class="height-btn" title="Reset to 0">0</button>
+        </div>
+        <div class="build-height-hint">
+          PageUp/Down or Shift+0-9
+        </div>
+        <div class="build-height-toggles">
+          <label><input type="checkbox" id="toggle-grid" checked> Show Grid</label>
+          <label><input type="checkbox" id="toggle-snap" checked> Smart Snap</label>
+        </div>
+        <div class="editor-tip">
+          💡 Hold & drag mouse to place multiple blocks
+        </div>
+      </div>
+      
+      <div id="camera-control-panel" class="camera-control-panel">
+        <div class="panel-title">Camera View</div>
+        <div class="camera-view-grid">
+          <button id="btn-view-iso" class="view-btn" title="Isometric (Default)">Iso</button>
+          <button id="btn-view-top" class="view-btn" title="Top Down">Top</button>
+          <button id="btn-view-front" class="view-btn" title="Front View">Front</button>
+          <button id="btn-view-side" class="view-btn" title="Side View">Side</button>
+        </div>
+        <button id="btn-camera-reset" class="camera-reset-btn" title="Reset Camera Position & Zoom">
+          🔄 Reset Camera
+        </button>
+        <div class="camera-hint">
+          Scroll to zoom<br>
+          Space + Drag to pan
+        </div>
+      </div>
+      
+      <div id="auto-save-indicator" class="auto-save-indicator">
+        💾 Auto-save enabled
+      </div>
+      
       <div id="top-hud">
         <div id="scoreboard">
            <div class="score-value" id="score-display">0</div>
@@ -123,16 +166,47 @@ export class EditorUI {
       </div>
 
       <div class="toolbar bottom-bar">
-        <button class="block-btn active" data-type="0">0. Cursor</button>
-        <button class="block-btn" data-type="1">1. Solid</button>
-        <button class="block-btn" data-type="2">2. Platform</button>
-        <button class="block-btn" data-type="3">3. Spawn</button>
-        <button class="block-btn" data-type="4">4. Goal</button>
-        <button class="block-btn" data-type="5">5. Eraser</button>
+        <button class="block-btn active" data-type="1">1. ✛ Cursor</button>
+        <button class="block-btn" data-type="2">2. ◼ Ground</button>
+        <button class="block-btn" data-type="3">3. ☁ Cloud</button>
+        <button class="block-btn" data-type="4">4. 🪜 Ladder</button>
+        <button class="block-btn" data-type="5">5. 💣 Trap</button>
+        <button class="block-btn" data-type="6">6. 🔑 Key</button>
+        <button class="block-btn" data-type="7">7. 🚪 Door</button>
+        <button class="block-btn" data-type="8">8. ▶ Start</button>
+        <button class="block-btn" data-type="9">9. ⬛ End</button>
+        <button class="block-btn" data-type="0">0. 🗑 Eraser</button>
       </div>
     `;
     
     this.compassArrow = document.getElementById('compass-arrow');
+    
+    // Setup build height callback
+    this.editorSystem.onBuildHeightChanged = (height: number) => {
+      this.updateBuildHeight(height);
+    };
+    
+    // Setup brush changed callback
+    this.editorSystem.onBrushChanged = (type: number) => {
+      this.updateBrushSelection(type);
+    };
+  }
+  
+  public updateBuildHeight(height: number): void {
+    const el = document.getElementById('build-height-value');
+    if (el) el.textContent = height.toString();
+  }
+  
+  public updateBrushSelection(type: number): void {
+    const buttons = this.container.querySelectorAll('.block-btn');
+    buttons.forEach(btn => {
+      const btnType = Number.parseInt((btn as HTMLElement).dataset.type || '0');
+      if (btnType === type) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
   }
 
   public updateScore(score: number): void {
@@ -193,10 +267,10 @@ export class EditorUI {
         buttons.forEach(b => b.classList.remove('active'));
         target.classList.add('active');
 
-        if (type === 0) {
-            this.editorSystem.setCursorMode();
-        } else if (type === 5) {
-          this.editorSystem.setEraser();
+        if (type === 1) {
+            this.editorSystem.setCursorMode();  // Keyboard 1
+        } else if (type === 0) {
+          this.editorSystem.setEraser();        // Keyboard 0
         } else {
           this.editorSystem.setBrush(type as VoxelType);
         }
@@ -227,6 +301,7 @@ export class EditorUI {
         const name = select.value;
         if (name) {
             if (this.levelManager.loadFromLocalStorage(name)) {
+                this.editorSystem.resetEditorState();
                 // alert(`Level '${name}' loaded!`); 
                 // Don't alert on load, just do it.
             } else {
@@ -242,6 +317,7 @@ export class EditorUI {
         if (key) {
             if (confirm(`Load preset map '${key}'? This will clear current changes.`)) {
                 this.levelManager.loadPreset(key);
+                this.editorSystem.resetEditorState();
             }
             select.value = ""; // Reset selection
         }
@@ -257,7 +333,50 @@ export class EditorUI {
     document.getElementById('btn-clear')?.addEventListener('click', () => {
       if (confirm('Are you sure you want to clear the entire level?')) {
         this.levelManager.clear();
+        this.editorSystem.resetEditorState();
       }
+    });
+    
+    // Build Height Controls
+    document.getElementById('btn-height-up')?.addEventListener('click', () => {
+      this.editorSystem.setBuildHeight(this.editorSystem.getBuildHeight() + 1);
+    });
+    
+    document.getElementById('btn-height-down')?.addEventListener('click', () => {
+      this.editorSystem.setBuildHeight(this.editorSystem.getBuildHeight() - 1);
+    });
+    
+    document.getElementById('btn-height-reset')?.addEventListener('click', () => {
+      this.editorSystem.setBuildHeight(0);
+    });
+    
+    document.getElementById('toggle-grid')?.addEventListener('change', (e) => {
+      this.editorSystem.toggleGridPlane();
+    });
+    
+    document.getElementById('toggle-snap')?.addEventListener('change', (e) => {
+      this.editorSystem.toggleSmartSnap();
+    });
+    
+    // Camera View Controls
+    document.getElementById('btn-view-iso')?.addEventListener('click', () => {
+      this.engine.setCameraView('isometric');
+    });
+    
+    document.getElementById('btn-view-top')?.addEventListener('click', () => {
+      this.engine.setCameraView('top');
+    });
+    
+    document.getElementById('btn-view-front')?.addEventListener('click', () => {
+      this.engine.setCameraView('front');
+    });
+    
+    document.getElementById('btn-view-side')?.addEventListener('click', () => {
+      this.engine.setCameraView('side');
+    });
+    
+    document.getElementById('btn-camera-reset')?.addEventListener('click', () => {
+      this.engine.resetCamera();
     });
   }
 
