@@ -125,8 +125,8 @@ Assume character is at position `(charX, charY, charZ)`:
 | **Pan View** | Middle Mouse / Shift+Left | Camera panning |
 | **Place Block** | Left Click | Create voxel at cursor position |
 | **Remove Block** | Alt + Left Click | Delete target voxel |
-| **Select Brush** | Number Keys 1-5 | 1:Block, 2:Goal, 3:Spawn... |
-| **Export Map** | P (Print) | Output level JSON to console |
+| **Select Brush** | Number Keys 1-5 | 1:Solid Block (typeID 1), 2:Platform (typeID 2), 3:Spawn Point (typeID 3), 4:Goal (typeID 4), 5:Eraser |
+| **Export Map** | P | Output level JSON to console |
 
 ---
 
@@ -147,7 +147,7 @@ Assume character is at position `(charX, charY, charZ)`:
 
 ## 6. Level Data Structure
 
-To facilitate engine processing, use a **3D array (grid system)** instead of traditional 3D model files (.obj/.gltf).
+To facilitate engine processing, use a **sparse coordinate list on a grid system** instead of traditional 3D model files (.obj/.gltf). Each block is stored as `[x, y, z, typeID]` coordinates aligned to an integer grid.
 
 ### 6.1 JSON Format
 
@@ -162,19 +162,30 @@ To facilitate engine processing, use a **3D array (grid system)** instead of tra
     "grid_size": [20, 20, 20],
     "spawn_point": [0, 5, 0],
     "blocks": [
-      [0, 0, 0, 1],  // [x, y, z, typeID]
+      [0, 0, 0, 1],
       [1, 0, 0, 1],
-      [5, 2, 5, 2]   // Platform that appears disconnected in Front view but connects after rotation
+      [5, 2, 5, 2]
     ]
   }
 }
 ```
 
+**Note**: Each entry in `blocks` is `[x, y, z, typeID]`. For example, `[5, 2, 5, 2]` represents a Platform (typeID 2) at coordinates (5, 2, 5) that appears disconnected in Front view but connects after rotation.
+
+**Spawn point representation and precedence:**
+
+- The **authoritative** spawn position for the runtime engine is the single `Spawn Point` block (typeID: 3), if present in the `blocks` array.
+- The top-level `level_data.spawn_point` field is a **redundant/editor-convenience field** used for quick access and validation.
+- Validation rules:
+  - There MUST be **at most one** `Spawn Point` block (typeID: 3) in `blocks`.
+  - If a `Spawn Point` block exists, its `[x, y, z]` MUST **match** `level_data.spawn_point`; otherwise the level is invalid.
+  - If **no** `Spawn Point` block exists, the engine/editor MAY fall back to `level_data.spawn_point` as the spawn position, or reject the level if project policy requires an explicit block.
+
 ### 6.2 Block Types
 
 1. **Solid Block (typeID: 1)**: Standard terrain, blocks character
 2. **Platform (typeID: 2)**: Optional - can jump through from below
-3. **Spawn Point (typeID: 3)**: Player starting position (only one per level)
+3. **Spawn Point (typeID: 3)**: Player starting position. This is the **authoritative spawn location** for the engine. There MUST be at most one Spawn Point block per level, and if present its coordinates MUST match `level_data.spawn_point` (see §6.1) or the level is considered invalid.
 4. **Goal (typeID: 4)**: Victory condition on contact
 5. **Eraser**: Tool for removing blocks (not a block type)
 
@@ -278,7 +289,7 @@ Character can endlessly circle a square path made of 4 blocks by continuously ro
 
 **Phase 2: Level Building (CRUD Operations)**
 1. Left click → `scene.add(mesh)` + store in data array
-2. Right click → `scene.remove(mesh)` + remove from array
+2. Alt + Left click → `scene.remove(mesh)` + remove from array
 3. Implement duplicate detection
 
 **Phase 3: Mode Switching**
