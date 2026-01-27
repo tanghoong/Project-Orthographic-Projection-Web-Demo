@@ -24,6 +24,7 @@ A web-based 3D-to-2D orthographic projection puzzle game where players navigate 
 1. **[Product Requirements Document (PRD)](docs/PRD.md)** - Technical specifications and game mechanics
 2. **[MVP Roadmap](docs/MVP-ROADMAP.md)** - Complete development plan with sprints and milestones
 3. **[Sprint Tracker](docs/SPRINT-TRACKER.md)** - Real-time progress tracking
+4. **[Quick Reference](docs/QUICK-REFERENCE.md)** - One-page sprint and task checklist
 
 ### Quick Links
 - [Setup Instructions](#setup-instructions) (coming soon)
