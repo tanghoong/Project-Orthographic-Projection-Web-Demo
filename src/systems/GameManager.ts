@@ -3,6 +3,7 @@ import { Engine } from '../core/Engine';
 import { LevelManager } from './LevelManager';
 import { EditorSystem } from './EditorSystem';
 import { PhysicsSystem } from './PhysicsSystem';
+import { ProgressionManager } from './ProgressionManager';
 import { Character } from '../entities/Character';
 import { InputManager } from '../core/InputManager';
 import { CONSTANTS } from '../utils/Constants';
@@ -15,6 +16,7 @@ export class GameManager {
   private levelManager: LevelManager;
   private editorSystem: EditorSystem;
   private physicsSystem: PhysicsSystem | null = null;
+  private progressionManager: ProgressionManager;
   private character: Character | null = null;
   private eventManager: EventManager;
   private cameraSystem: CameraSystem;
@@ -35,6 +37,7 @@ export class GameManager {
     this.inputManager = engine.getInputManager();
     this.eventManager = EventManager.getInstance();
     this.cameraSystem = new CameraSystem(engine);
+    this.progressionManager = new ProgressionManager(levelManager);
 
     // Listen for Mode Switch (Tab)
     window.addEventListener('keydown', (e) => {
@@ -45,7 +48,7 @@ export class GameManager {
     });
 
     // Event Listeners
-    this.eventManager.on(GameEventType.INPUT_ROTATE, (data: any) => {
+    this.eventManager.on(GameEventType.INPUT_ROTATE, (data: { direction: number }) => {
         if (this.mode === GameMode.PLAY) {
             this.cameraSystem.rotate(data.direction, 
               () => this.handleCharacterOcclusion(), 
@@ -58,8 +61,18 @@ export class GameManager {
         }
     });
 
-    this.eventManager.on(GameEventType.INPUT_MOVE, (data: any) => {
+    this.eventManager.on(GameEventType.INPUT_MOVE, (data: { key: string; pressed: boolean }) => {
         this.inputManager.setVirtualKey(data.key, data.pressed);
+    });
+    
+    this.eventManager.on(GameEventType.INPUT_ACTION, (data: { action: string }) => {
+      if (data.action === 'next_level') {
+        this.loadNextLevel();
+      } else if (data.action === 'retry_level') {
+        this.retryCurrentLevel();
+      } else if (data.action === 'return_editor') {
+        this.toggleMode(); // Switch back to edit mode
+      }
     });
   }
 
@@ -107,6 +120,10 @@ export class GameManager {
     this.physicsSystem = new PhysicsSystem(this.character, this.levelManager);
     this.physicsSystem.setViewState(this.cameraSystem.getViewState());
     
+    // Count keys in level
+    this.physicsSystem.countKeysInLevel();
+    this.physicsSystem.resetGameState();
+    
     // Reset Score
     this.score = 0;
     this.eventManager.emit(GameEventType.SCORE_UPDATED, this.score);
@@ -115,8 +132,27 @@ export class GameManager {
     this.physicsSystem.onGoalReached = () => {
        this.score += 100;
        this.eventManager.emit(GameEventType.SCORE_UPDATED, this.score);
-       this.eventManager.emit(GameEventType.GOAL_REACHED);
-       // Optional: Play Sound
+       this.progressionManager.handleLevelComplete();
+       // Note: GOAL_REACHED and LEVEL_COMPLETE events are emitted by ProgressionManager
+    };
+    
+    // Handle Key Collection
+    this.physicsSystem.onKeyCollected = () => {
+      this.score += 10;
+      this.eventManager.emit(GameEventType.SCORE_UPDATED, this.score);
+      if (this.physicsSystem) {
+        this.eventManager.emit(GameEventType.KEY_COLLECTED, {
+          collected: this.physicsSystem.getCollectedKeysCount(),
+          required: this.physicsSystem.getRequiredKeysCount()
+        });
+      }
+    };
+    
+    // Handle Death/Trap
+    this.physicsSystem.onDeath = () => {
+      this.score = Math.max(0, this.score - 5); // Penalty
+      this.eventManager.emit(GameEventType.SCORE_UPDATED, this.score);
+      this.eventManager.emit(GameEventType.PLAYER_DIED);
     };
   }
 
@@ -173,13 +209,22 @@ export class GameManager {
           moveDir = 1;
         }
         
+        // Vertical Input for Ladder Climbing
+        let verticalDir = 0;
+        if (this.inputManager.isKeyPressed('w') || this.inputManager.isKeyPressed('ArrowUp')) {
+          verticalDir = 1;
+        }
+        if (this.inputManager.isKeyPressed('s') || this.inputManager.isKeyPressed('ArrowDown')) {
+          verticalDir = -1;
+        }
+        
         // Pass intent to physics
         this.physicsSystem.setInput(moveDir);
+        this.physicsSystem.setVerticalInput(verticalDir);
 
         // Jump Logic (with Jump Buffering & Coyote Time)
-        const isJumpPressed = this.inputManager.isKeyPressed(' ') || 
-                             this.inputManager.isKeyPressed('w') || 
-                             this.inputManager.isKeyPressed('ArrowUp');
+        // Note: W is used for ladder climbing, so only Space triggers jump
+        const isJumpPressed = this.inputManager.isKeyPressed(' ');
         
         // Trigger jump on button press (PhysicsSystem handles buffering/coyote time)
         if (isJumpPressed && !this.wasJumpPressed) {
@@ -243,7 +288,7 @@ export class GameManager {
       }
   }
   
-  private autoSaveLevel(): void {
+  public autoSaveLevel(): void {
     try {
       const levelData = this.levelManager.serialize();
       localStorage.setItem(CONSTANTS.EDITOR.AUTO_SAVE_KEY, levelData);
@@ -266,6 +311,54 @@ export class GameManager {
     } catch (error) {
       console.error('Failed to load auto-save:', error);
       return false;
+    }
+  }
+  
+  public getProgressionManager(): ProgressionManager {
+    return this.progressionManager;
+  }
+  
+  public startLevelById(levelId: string): boolean {
+    // Switch to edit mode first
+    if (this.mode === GameMode.PLAY) {
+      this.enterEditMode();
+    }
+    
+    // Load the level
+    if (!this.levelManager.loadPreset(levelId)) {
+      console.error(`Failed to load level: ${levelId}`);
+      return false;
+    }
+    
+    // Track in progression
+    this.progressionManager.startLevel(levelId);
+    
+    // Enter play mode
+    this.enterPlayMode();
+    return true;
+  }
+  
+  private loadNextLevel(): void {
+    // Switch to edit mode
+    if (this.mode === GameMode.PLAY) {
+      this.enterEditMode();
+    }
+    
+    // Load next level via progression manager
+    if (this.progressionManager.loadNextLevel()) {
+      // Switch back to play mode
+      this.enterPlayMode();
+    } else {
+      this.eventManager.emit(GameEventType.PRESET_LOADED, {
+        message: 'No more levels!'
+      });
+    }
+  }
+  
+  private retryCurrentLevel(): void {
+    const currentLevelId = this.progressionManager.getCurrentLevelId();
+    if (currentLevelId) {
+      this.startLevelById(currentLevelId);
     }
   }
 }

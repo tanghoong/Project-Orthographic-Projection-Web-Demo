@@ -1,8 +1,10 @@
+// Exported enum members are intentionally used as values throughout the codebase
 export enum GameMode {
   EDIT,
   PLAY
 }
 
+// Exported enum members are intentionally used as values throughout the codebase
 export enum ViewState {
   FRONT = 0, // -Z
   RIGHT = 1, // -X
@@ -10,6 +12,7 @@ export enum ViewState {
   LEFT = 3   // +X
 }
 
+// Exported enum members are intentionally used as values throughout the codebase
 export enum GameEventType {
   // Input Events
   INPUT_ROTATE = 'input_rotate',
@@ -21,6 +24,9 @@ export enum GameEventType {
   SCORE_UPDATED = 'score_updated',
   GOAL_REACHED = 'goal_reached',
   CAMERA_ROTATED = 'camera_rotated',
+  KEY_COLLECTED = 'key_collected',
+  PLAYER_DIED = 'player_died',
+  LEVEL_COMPLETE = 'level_complete',
   
   // Editor Events
   PRESET_LOADED = 'preset_loaded'

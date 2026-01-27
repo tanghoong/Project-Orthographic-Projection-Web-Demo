@@ -11,13 +11,26 @@ export class PhysicsSystem {
   private gravity: number = CONSTANTS.PHYSICS.GRAVITY;
   private viewState: ViewState = ViewState.FRONT;
   private inputX: number = 0; // -1, 0, 1
+  private inputY: number = 0; // -1, 0, 1 (for ladder climbing)
   public onGoalReached: (() => void) | null = null;
+  public onKeyCollected: ((_keyType: VoxelType) => void) | null = null;
+  public onDeath: (() => void) | null = null;
   private prevPosition: THREE.Vector3 = new THREE.Vector3();
   
   // Jump Buffer & Coyote Time
   private jumpBuffer: number = 0;          // Time remaining on jump buffer
   private coyoteTime: number = 0;          // Time remaining on coyote time
   private wasGroundedLastFrame: boolean = false;
+  
+  // Ladder System
+  private onLadder: boolean = false;
+  
+  // Key Collection System
+  private collectedKeys: Set<string> = new Set(); // Track collected key positions
+  private keysRequired: number = 0; // Total keys in level
+  
+  // Trap & Respawn System
+  private lastSafePosition: THREE.Vector3 = new THREE.Vector3(0, 5, 0);
 
   constructor(character: Character, levelManager: LevelManager) {
     this.character = character;
@@ -55,6 +68,34 @@ export class PhysicsSystem {
     this.inputX = dir;
   }
 
+  public setVerticalInput(dir: number): void {
+    this.inputY = dir;
+  }
+
+  public getCollectedKeysCount(): number {
+    return this.collectedKeys.size;
+  }
+
+  public getRequiredKeysCount(): number {
+    return this.keysRequired;
+  }
+
+  public hasAllKeys(): boolean {
+    return this.keysRequired > 0 && this.collectedKeys.size >= this.keysRequired;
+  }
+
+  public resetGameState(): void {
+    this.collectedKeys.clear();
+    this.keysRequired = 0;
+    this.onLadder = false;
+    this.lastSafePosition.set(0, 5, 0);
+  }
+
+  public countKeysInLevel(): void {
+    const voxels = this.levelManager.getAllVoxels();
+    this.keysRequired = voxels.filter(v => v.type === VoxelType.KEY).length;
+  }
+
   public jump(): void {
     // Only jump if grounded or within coyote time
     if (this.character.isGrounded || this.coyoteTime > 0) {
@@ -78,6 +119,9 @@ export class PhysicsSystem {
     const speed = CONSTANTS.PHYSICS.MOVE_SPEED;
     const moveVel = this.inputX * speed;
 
+    // Check if on ladder
+    this.checkLadder();
+
     // Reset horizontal velocity first
     this.character.velocity.x = 0;
     this.character.velocity.z = 0;
@@ -89,12 +133,25 @@ export class PhysicsSystem {
       case ViewState.LEFT:  this.character.velocity.z = moveVel; break;  // Invert Z for Left View
     }
 
-    // Apply Gravity
-    this.character.velocity.y -= this.gravity * dt;
-    
-    // Cap falling speed to terminal velocity
-    if (this.character.velocity.y < -CONSTANTS.PHYSICS.TERMINAL_VELOCITY) {
-      this.character.velocity.y = -CONSTANTS.PHYSICS.TERMINAL_VELOCITY;
+    // Ladder Climbing Logic
+    if (this.onLadder) {
+      // Disable gravity on ladder
+      const climbSpeed = 3.0;
+      this.character.velocity.y = this.inputY * climbSpeed;
+      
+      // Allow dismount with jump
+      if (this.inputY === 0 && Math.abs(this.inputX) === 0) {
+        // Idle on ladder, zero out velocity
+        this.character.velocity.y = 0;
+      }
+    } else {
+      // Apply Gravity (only when not on ladder)
+      this.character.velocity.y -= this.gravity * dt;
+      
+      // Cap falling speed to terminal velocity
+      if (this.character.velocity.y < -CONSTANTS.PHYSICS.TERMINAL_VELOCITY) {
+        this.character.velocity.y = -CONSTANTS.PHYSICS.TERMINAL_VELOCITY;
+      }
     }
 
     // Integrate Position
@@ -127,6 +184,11 @@ export class PhysicsSystem {
     this.character.isGrounded = false;
     this.checkCollision('vertical');
     
+    // Update last safe position when grounded on solid block
+    if (this.character.isGrounded) {
+      this.lastSafePosition.copy(this.character.position);
+    }
+    
     // Update Coyote Time: Give grace period when leaving platform
     if (this.wasGroundedLastFrame && !this.character.isGrounded) {
       this.coyoteTime = CONSTANTS.PHYSICS.COYOTE_TIME;
@@ -150,6 +212,35 @@ export class PhysicsSystem {
     if (!this.character.isGrounded && this.character.position.y < -10) {
       this.character.position.set(0, 5, 0);
       this.character.velocity.set(0, 0, 0);
+    }
+  }
+
+  private checkLadder(): void {
+    const charBox = new THREE.Box3().setFromObject(this.character);
+    const voxels = this.levelManager.getAllVoxels();
+    
+    this.onLadder = false;
+    
+    for (const voxel of voxels) {
+      if (voxel.type !== VoxelType.LADDER) continue;
+      
+      const voxelPos = voxel.position;
+      const voxelSize = 1;
+      
+      // Check 3D AABB overlap for ladder
+      const vMinX = voxelPos.x - voxelSize/2;
+      const vMaxX = voxelPos.x + voxelSize/2;
+      const vMinY = voxelPos.y - voxelSize/2;
+      const vMaxY = voxelPos.y + voxelSize/2;
+      const vMinZ = voxelPos.z - voxelSize/2;
+      const vMaxZ = voxelPos.z + voxelSize/2;
+      
+      if (charBox.max.x > vMinX && charBox.min.x < vMaxX &&
+          charBox.max.y > vMinY && charBox.min.y < vMaxY &&
+          charBox.max.z > vMinZ && charBox.min.z < vMaxZ) {
+        this.onLadder = true;
+        return;
+      }
     }
   }
 
@@ -209,6 +300,48 @@ export class PhysicsSystem {
       if (isOverlapping) {
         collisionFound = true; // Mark as found
         
+        // Key Collection
+        if (voxel.userData.type === VoxelType.KEY) {
+          const keyId = `${voxelPos.x}_${voxelPos.y}_${voxelPos.z}`;
+          if (!this.collectedKeys.has(keyId)) {
+            this.collectedKeys.add(keyId);
+            console.log(`Key collected! (${this.collectedKeys.size}/${this.keysRequired})`);
+            
+            // Remove key from level
+            this.levelManager.removeVoxelAt(voxelPos);
+            
+            if (this.onKeyCollected) {
+              this.onKeyCollected(VoxelType.KEY);
+            }
+          }
+          continue; // Don't treat as solid collision
+        }
+        
+        // Door Unlock System
+        if (voxel.userData.type === VoxelType.DOOR) {
+          if (this.hasAllKeys()) {
+            // Door unlocked - remove it and allow passage
+            console.log("Door unlocked!");
+            this.levelManager.removeVoxelAt(voxelPos);
+            continue; // Don't collide
+          } else {
+            // Door is locked - treat as solid wall
+            console.log(`Door locked! Need ${this.keysRequired - this.collectedKeys.size} more keys.`);
+            // Fall through to normal collision resolution
+          }
+        }
+        
+        // Trap Detection
+        if (voxel.userData.type === VoxelType.TRAP) {
+          console.log("Hit trap! Respawning...");
+          this.character.position.copy(this.lastSafePosition);
+          this.character.velocity.set(0, 0, 0);
+          if (this.onDeath) {
+            this.onDeath();
+          }
+          return true;
+        }
+        
         // Goal Detection (Task 4.4)
         if (voxel.userData.type === VoxelType.GOAL) {
           console.log("GOAL REACHED!");
@@ -217,6 +350,11 @@ export class PhysicsSystem {
           }
           // Do NOT reset position on victory
           return true;
+        }
+        
+        // Ladders don't block movement
+        if (voxel.userData.type === VoxelType.LADDER) {
+          continue;
         }
 
         // Resolve Collision

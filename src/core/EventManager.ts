@@ -1,4 +1,5 @@
-type EventHandler = (data?: any) => void;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EventHandler = (_data?: any) => void;
 
 export class EventManager {
   private static instance: EventManager;
@@ -30,7 +31,7 @@ export class EventManager {
     }
   }
 
-  public emit(event: string, data?: any): void {
+  public emit(event: string, data?: unknown): void {
     if (!this.listeners.has(event)) return;
     
     const handlers = this.listeners.get(event)!;

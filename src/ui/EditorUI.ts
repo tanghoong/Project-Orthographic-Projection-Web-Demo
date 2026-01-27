@@ -16,7 +16,7 @@ export class EditorUI {
   // Callbacks
   public onRotateLeft: (() => void) | null = null;
   public onRotateRight: (() => void) | null = null;
-  public onInput: ((key: string, pressed: boolean) => void) | null = null;
+  public onInput: ((_key: string, _pressed: boolean) => void) | null = null;
 
   constructor(containerId: string, editorSystem: EditorSystem, levelManager: LevelManager, engine: Engine) {
     this.editorSystem = editorSystem;
@@ -34,10 +34,13 @@ export class EditorUI {
     this.container.classList.add('edit-mode');
 
     // Subscribe to Game Events
-    this.eventManager.on(GameEventType.SCORE_UPDATED, (score: any) => this.updateScore(score));
+    this.eventManager.on(GameEventType.SCORE_UPDATED, (score: number) => this.updateScore(score));
     this.eventManager.on(GameEventType.GOAL_REACHED, () => this.showNotification("Goal Reached! +100 Points"));
-    this.eventManager.on(GameEventType.GAME_MODE_CHANGED, (mode: any) => this.setGameMode(mode));
-    this.eventManager.on(GameEventType.CAMERA_ROTATED, (angle: any) => this.updateCompass(angle));
+    this.eventManager.on(GameEventType.GAME_MODE_CHANGED, (mode: GameMode) => this.setGameMode(mode));
+    this.eventManager.on(GameEventType.CAMERA_ROTATED, (angle: number) => this.updateCompass(angle));
+    this.eventManager.on(GameEventType.KEY_COLLECTED, (data: { collected: number; required: number }) => this.updateKeyCounter(data.collected, data.required));
+    this.eventManager.on(GameEventType.PLAYER_DIED, () => this.showNotification("💀 Ouch! -5 Points", 2000));
+    this.eventManager.on(GameEventType.LEVEL_COMPLETE, (data: { time: number; rotations: number; stats: { bestTime?: number; bestRotations?: number }; hasNext: boolean }) => this.showLevelComplete(data));
   }
 
   public setGameMode(mode: GameMode): void {
@@ -146,6 +149,9 @@ export class EditorUI {
         <div id="scoreboard">
            <div class="score-value" id="score-display">0</div>
         </div>
+        <div id="key-counter" class="key-counter">
+           🔑 <span id="keys-collected">0</span>/<span id="keys-total">0</span>
+        </div>
         <div class="compass-container">
           <div class="compass-label">N</div>
           <div class="compass-inner">
@@ -176,6 +182,23 @@ export class EditorUI {
         <button class="block-btn" data-type="8">8. ▶ Start</button>
         <button class="block-btn" data-type="9">9. ⬛ End</button>
         <button class="block-btn" data-type="0">0. 🗑 Eraser</button>
+      </div>
+      
+      <div id="level-complete-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h2>🎉 Level Complete!</h2>
+          <div id="level-stats">
+            <p>Time: <span id="completion-time">0:00</span></p>
+            <p>Rotations: <span id="completion-rotations">0</span></p>
+            <p>Best Time: <span id="best-time">-</span></p>
+            <p>Best Rotations: <span id="best-rotations">-</span></p>
+          </div>
+          <div class="modal-buttons">
+            <button id="btn-next-level" class="modal-btn primary">Next Level</button>
+            <button id="btn-retry-level" class="modal-btn">Retry</button>
+            <button id="btn-return-editor" class="modal-btn">Return to Editor</button>
+          </div>
+        </div>
       </div>
     `;
     
@@ -212,6 +235,53 @@ export class EditorUI {
   public updateScore(score: number): void {
     const el = document.getElementById('score-display');
     if (el) el.textContent = score.toString();
+  }
+  
+  public updateKeyCounter(collected: number, total: number): void {
+    const collectedEl = document.getElementById('keys-collected');
+    const totalEl = document.getElementById('keys-total');
+    if (collectedEl) collectedEl.textContent = collected.toString();
+    if (totalEl) totalEl.textContent = total.toString();
+  }
+  
+  public showLevelComplete(data: { time: number; rotations: number; stats: { bestTime?: number; bestRotations?: number }; hasNext: boolean }): void {
+    const modal = document.getElementById('level-complete-modal');
+    if (!modal) return;
+    
+    // Format time as MM:SS
+    const formatTime = (seconds: number): string => {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+    
+    // Update stats
+    const timeEl = document.getElementById('completion-time');
+    const rotationsEl = document.getElementById('completion-rotations');
+    const bestTimeEl = document.getElementById('best-time');
+    const bestRotationsEl = document.getElementById('best-rotations');
+    
+    if (timeEl) timeEl.textContent = formatTime(data.time);
+    if (rotationsEl) rotationsEl.textContent = data.rotations.toString();
+    if (bestTimeEl) bestTimeEl.textContent = data.stats.bestTime ? formatTime(data.stats.bestTime) : '-';
+    if (bestRotationsEl) bestRotationsEl.textContent = data.stats.bestRotations?.toString() || '-';
+    
+    // Show/hide next level button
+    const nextBtn = document.getElementById('btn-next-level');
+    if (nextBtn) {
+      if (data.hasNext) {
+        nextBtn.style.display = 'block';
+      } else {
+        nextBtn.style.display = 'none';
+      }
+    }
+    
+    modal.style.display = 'flex';
+  }
+  
+  public hideLevelComplete(): void {
+    const modal = document.getElementById('level-complete-modal');
+    if (modal) modal.style.display = 'none';
   }
 
   private attachEvents(): void {
@@ -350,11 +420,11 @@ export class EditorUI {
       this.editorSystem.setBuildHeight(0);
     });
     
-    document.getElementById('toggle-grid')?.addEventListener('change', (e) => {
+    document.getElementById('toggle-grid')?.addEventListener('change', () => {
       this.editorSystem.toggleGridPlane();
     });
     
-    document.getElementById('toggle-snap')?.addEventListener('change', (e) => {
+    document.getElementById('toggle-snap')?.addEventListener('change', () => {
       this.editorSystem.toggleSmartSnap();
     });
     
@@ -377,6 +447,22 @@ export class EditorUI {
     
     document.getElementById('btn-camera-reset')?.addEventListener('click', () => {
       this.engine.resetCamera();
+    });
+    
+    // Level Complete Modal Buttons
+    document.getElementById('btn-next-level')?.addEventListener('click', () => {
+      this.hideLevelComplete();
+      this.eventManager.emit(GameEventType.INPUT_ACTION, { action: 'next_level' });
+    });
+    
+    document.getElementById('btn-retry-level')?.addEventListener('click', () => {
+      this.hideLevelComplete();
+      this.eventManager.emit(GameEventType.INPUT_ACTION, { action: 'retry_level' });
+    });
+    
+    document.getElementById('btn-return-editor')?.addEventListener('click', () => {
+      this.hideLevelComplete();
+      this.eventManager.emit(GameEventType.INPUT_ACTION, { action: 'return_editor' });
     });
   }
 

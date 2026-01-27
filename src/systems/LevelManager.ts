@@ -94,7 +94,7 @@ export class LevelManager {
     
     if (!voxel) return false;
 
-    const type = voxel.userData.type;
+    const type = voxel.userData.type as VoxelType;
 
     // Update spawn point reference if we are deleting it
     if (type === VoxelType.SPAWN) {
@@ -114,6 +114,15 @@ export class LevelManager {
     }
 
     return true;
+  }
+  
+  public removeVoxelAt(position: THREE.Vector3, recordHistory: boolean = false): boolean {
+    return this.removeVoxel(
+      Math.round(position.x),
+      Math.round(position.y),
+      Math.round(position.z),
+      recordHistory
+    );
   }
 
   public undo(): void {
@@ -152,7 +161,7 @@ export class LevelManager {
         voxel.position.x,
         voxel.position.y,
         voxel.position.z,
-        voxel.userData.type
+        voxel.userData.type as number
       ]);
     });
 
@@ -179,7 +188,7 @@ export class LevelManager {
       this.clear();
 
       data.level_data.blocks.forEach(([x, y, z, type]) => {
-        this.addVoxel(x, y, z, type, false); // Don't record history during load
+        this.addVoxel(x, y, z, type as VoxelType, false); // Don't record history during load
       });
 
       console.log(`Level loaded with ${this.voxels.size} blocks.`);

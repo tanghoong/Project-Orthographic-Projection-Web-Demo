@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+// Exported enum members are intentionally used as values throughout the codebase
 export enum VoxelType {
   SOLID = 2,      // Ground block
   PLATFORM = 3,   // Cloud block (floating)
@@ -14,7 +15,7 @@ export enum VoxelType {
 export class Voxel {
   public position: THREE.Vector3;
   public type: VoxelType;
-  public userData: { [key: string]: any } = {};
+  public userData: { [key: string]: unknown } = {};
 
   constructor(position: THREE.Vector3, type: VoxelType) {
     this.position = position.clone();

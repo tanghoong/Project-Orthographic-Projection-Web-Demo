@@ -1,8 +1,8 @@
-# Project Orthographic Projection Web Demo
+# Orthographic Projection Puzzle Game
 
-**Status**: 🔵 Planning Phase  
-**Version**: 1.0 MVP  
-**Last Updated**: 2026-01-27
+**Status**: 🟢 Active Development  
+**Version**: 0.5.0 (Pre-Alpha)  
+**Last Updated**: 2026-01-28
 
 ---
 
@@ -12,41 +12,276 @@ A web-based 3D-to-2D orthographic projection puzzle game where players navigate 
 
 ### Key Features
 - ✨ **Perspective Rotation Mechanic**: Rotate the world 90° to flatten depth
-- 🎨 **Built-in Level Editor**: Create and test levels in real-time
+- 🎨 **Built-in Level Editor**: Create and test levels in real-time with layer-based building
 - 🌐 **Browser-based**: No installation required, runs in modern browsers
-- 🎯 **Puzzle Solving**: Use visual connections to navigate 3D space
+- 🎯 **Puzzle Solving**: Keys, doors, ladders, traps, and more!
+- 🌊 **Bounded World**: 20×20×40 block space with water below ground
+- 🎹 **Keyboard Controls**: Intuitive 1-9 block selection, 0 for eraser
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/tanghoong/Project-Orthographic-Projection-Web-Demo.git
+cd Project-Orthographic-Projection-Web-Demo
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Controls
+
+#### Play Mode
+- **Arrow Keys**: Move character
+- **Space**: Jump
+- **Q/E**: Rotate camera 90° left/right
+
+#### Edit Mode
+- **Keyboard 1**: ✛ Cross cursor (camera control)
+- **Keyboard 2**: ◼ Ground block
+- **Keyboard 3**: ☁ Cloud block (floating)
+- **Keyboard 4**: 🪜 Ladder (climb mechanic)
+- **Keyboard 5**: 💣 Boom trap (respawn)
+- **Keyboard 6**: 🔑 Floating key (collectible)
+- **Keyboard 7**: 🚪 Exit door (requires all keys)
+- **Keyboard 8**: ▶ Start point
+- **Keyboard 9**: ⬛ End goal
+- **Keyboard 0**: 🗑 Eraser
+- **Mouse Left Click**: Place blocks (hold and drag for multiple)
+- **Mouse Right Click**: Delete blocks at cursor (accurate to instance)
+- **PageUp/PageDown**: Adjust build height layer
+- **Space + Drag**: Pan camera
+- **Scroll**: Zoom in/out
+- **Tab**: Switch between Edit/Play mode
 
 ---
 
 ## 📚 Documentation
 
 ### Core Documents
-1. **[Product Requirements Document (PRD)](docs/PRD.md)** - Technical specifications and game mechanics
-2. **[MVP Roadmap](docs/MVP-ROADMAP.md)** - Complete development plan with sprints and milestones
-3. **[Sprint Tracker](docs/SPRINT-TRACKER.md)** - Real-time progress tracking
-4. **[Quick Reference](docs/QUICK-REFERENCE.md)** - One-page sprint and task checklist
-
-### Quick Links
-- [Setup Instructions](#setup-instructions) (coming soon)
-- [How to Play](#how-to-play) (coming soon)
-- [How to Create Levels](#level-editor) (coming soon)
-- [Contributing Guidelines](#contributing) (coming soon)
+1. **[REVIEW-1.md](docs/REVIEW-1.md)** - Comprehensive project review and roadmap
+2. **[Product Requirements Document (PRD)](docs/PRD.md)** - Technical specifications
+3. **[MVP Roadmap](docs/MVP-ROADMAP.md)** - Development plan
+4. **[Sprint Tracker](docs/SPRINT-TRACKER.md)** - Progress tracking
+5. **[Quick Reference](docs/QUICK-REFERENCE.md)** - Task checklist
 
 ---
 
-## 🗺️ Project Roadmap
+## 🗺️ Current Implementation Status
 
-### Timeline: 10 Weeks (5 x 2-week Sprints)
+### ✅ Completed Features
 
-| Sprint | Duration | Theme | Deliverable | Status |
-|--------|----------|-------|-------------|--------|
-| **Sprint 1** | Weeks 1-2 | Foundation & Environment Setup | Three.js scene rendering voxels | 🔵 Not Started |
-| **Sprint 2** | Weeks 3-4 | Level Editor - Edit Mode | Functional level editor | 🔵 Not Started |
-| **Sprint 3** | Weeks 5-6 | Play Mode - Character & Physics | Character movement and collision | 🔵 Not Started |
-| **Sprint 4** | Weeks 7-8 | Core Mechanic - Perspective Rotation | Working projection collision | 🔵 Not Started |
-| **Sprint 5** | Weeks 9-10 | Polish & MVP Validation | Complete playable demo | 🔵 Not Started |
+#### Core Engine (100%)
+- Three.js orthographic camera setup
+- Scene rendering with instanced voxel meshes
+- OrbitControls with zoom/pan/damping
+- Water plane below ground (Y < 0)
+- World boundary visualization (20×20×40)
 
-**Overall Progress**: 0% (0/5 Milestones Complete)
+#### Physics System (95%)
+- Gravity and movement
+- Jump mechanics with buffering (100ms) and coyote time (150ms)
+- AABB collision detection
+- Terminal velocity cap
+- **Pending**: Ladder climbing, trap respawn
+
+#### Level Editor (95%)
+- Layer-based building system (Y=0 to Y=39)
+- Grid plane at current build height
+- Smart snapping disabled (layer control)
+- Minecraft-style drag-to-place
+- Accurate instanced mesh deletion
+- World boundary enforcement
+- Auto-save on mode switch
+- Undo/redo system
+- **Pending**: Sprite decorations
+
+#### Camera System (100%)
+- 90° rotation animation (Q/E keys)
+- View presets (Isometric, Top, Front, Side)
+- Camera reset functionality
+- Smooth damping and zoom limits
+
+#### Block Types (100%)
+- Ground (solid brown)
+- Cloud (floating light cyan)
+- Ladder (orange)
+- Trap (red)
+- Key (gold)
+- Door (green)
+- Start point (yellow)
+- End goal (purple)
+- **Pending**: Gameplay logic for ladder/trap/key/door
+
+#### UI Systems (100%)
+- Bottom toolbar with emoji icons
+- Build height indicator and controls
+- Camera view switcher
+- Auto-save indicator
+- Visual button feedback for keyboard shortcuts
+- Mobile touch controls (basic)
+
+### 🟡 In Progress
+
+#### Gameplay Mechanics
+- **Ladder Climbing**: Physics integration needed
+- **Key Collection**: Auto-pickup on collision
+- **Door Unlocking**: Require all keys to open
+- **Trap System**: Respawn from last safe checkpoint
+- **Level Progression**: Transition between levels
+
+### 📋 Upcoming Tasks
+
+#### Phase 1: Complete Gameplay
+1. Implement ladder climbing mechanics
+2. Add key collection system with UI counter
+3. Add door unlock logic
+4. Implement trap collision and respawn
+5. Create 5-10 tutorial/easy levels
+
+#### Phase 2: Visual Polish
+1. Add 2D sprite decorations on blocks
+2. Particle effects (jump dust, key sparkles)
+3. Character animations
+4. Sound effects (optional)
+
+#### Phase 3: Advanced Features
+1. Procedural level generator
+2. Level sharing (JSON export/import)
+3. Portal/teleport system
+4. Performance optimizations (spatial hashing)
+
+---
+
+## 🌍 World Structure
+
+```
+     Y=39 ┌──────────────────┐  ← Sky limit
+          │                  │
+          │   Building       │
+          │    Space         │
+          │   (20×20×40)     │
+      Y=0 └──────────────────┘  ← Ground level (sea level)
+          ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈  ← Water/Sea
+   
+   X: -10 to +10 (20 blocks wide)
+   Z: -10 to +10 (20 blocks deep)
+   Y:   0 to 39  (40 blocks tall)
+```
+
+### Block Colors
+- **Ground**: Brown (#8b4513)
+- **Cloud**: Light Cyan (#e0f7fa)
+- **Ladder**: Orange (#d2691e)
+- **Trap**: Red (#ff0000)
+- **Key**: Gold (#ffd700)
+- **Door**: Green (#00ff00)
+- **Start**: Yellow (#ffeb3b)
+- **End**: Purple (#9c27b0)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Engine**: Three.js (WebGL)
+- **Language**: TypeScript
+- **Build Tool**: Vite
+- **Animation**: GSAP
+- **Styling**: Vanilla CSS
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── core/
+│   ├── Engine.ts              # Scene, camera, renderer setup
+│   ├── EventManager.ts        # Event bus for decoupled communication
+│   └── InputManager.ts        # Keyboard/mouse input handling
+├── systems/
+│   ├── CameraSystem.ts        # 90° rotation logic
+│   ├── EditorSystem.ts        # Level editor with layer building
+│   ├── GameManager.ts         # Mode switching, auto-save
+│   ├── LevelManager.ts        # Level data, serialization
+│   ├── PhysicsSystem.ts       # Gravity, collision, jump mechanics
+│   └── VoxelRenderer.ts       # Instanced mesh rendering
+├── entities/
+│   ├── Character.ts           # Player character with GSAP eyes
+│   └── Voxel.ts               # Block type enum and data
+├── ui/
+│   └── EditorUI.ts            # Editor toolbar and controls
+├── utils/
+│   ├── Constants.ts           # Game configuration
+│   └── Enums.ts               # ViewState, GameMode, Events
+├── data/
+│   └── PresetLevels.ts        # Tutorial levels
+└── main.ts                    # Application entry point
+```
+
+---
+
+## 🎯 Development Timeline
+
+| Sprint | Status | Completion |
+|--------|--------|------------|
+| **Foundation** | ✅ Complete | 100% |
+| **Editor System** | ✅ Complete | 100% |
+| **Physics & Movement** | ✅ Complete | 95% |
+| **Camera Rotation** | ✅ Complete | 100% |
+| **Block Types** | ✅ Complete | 100% |
+| **World Boundaries** | ✅ Complete | 100% |
+| **Gameplay Mechanics** | 🟡 In Progress | 20% |
+| **Visual Polish** | 🔵 Not Started | 0% |
+| **Level Content** | 🔵 Not Started | 0% |
+
+**Overall Progress**: ~60% Complete
+
+---
+
+## 🐛 Known Issues
+
+- Ladder climbing not implemented (visual only)
+- Key collection not functional (visual only)
+- Door unlock logic pending (visual only)
+- Trap respawn system pending (visual only)
+- Some lint warnings (non-critical)
+
+---
+
+## 🤝 Contributing
+
+This is a personal learning project, but feedback and suggestions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
+
+## 📄 License
+
+MIT License - See LICENSE file for details
+
+---
+
+## 🙏 Acknowledgments
+
+- Three.js community for excellent documentation
+- GSAP for smooth animations
+- Vite for blazing-fast builds
+
+---
+
+**Last Updated**: January 28, 2026  
+**Next Milestone**: Complete gameplay mechanics (keys, doors, ladders, traps)
 
 👉 **[View Detailed Roadmap](docs/MVP-ROADMAP.md)**  
 👉 **[Track Current Sprint Progress](docs/SPRINT-TRACKER.md)**
