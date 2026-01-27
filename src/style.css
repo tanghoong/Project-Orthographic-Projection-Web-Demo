@@ -45,39 +45,99 @@ body {
   justify-content: space-between;
   padding: 10px;
   box-sizing: border-box;
+  z-index: 10;
 }
 
 /* Edit Mode Styles */
 .edit-mode .toolbar {
   display: flex;
-}
-
-.edit-mode .compass-container {
-  display: block;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Play Mode Styles */
 .play-mode .toolbar {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* Ensure Compass is visible in both modes, or as requested */
-/* Requirement: Compass should always show in map mode. Play mode hides edit controls. 
-   But "Map Mode" usually means "Edit Mode". Let's assume Compass is part of Edit Mode or Map View.
-   User said: "Compass should always show in map mode". And "Play Mode... hide all edit related controls".
-   However, usually compass is useful. Let's make it visible in Edit Mode, and decide for Play Mode.
-   "Play Mode... hide all edit related controls... auxiliary visual elements".
-   Let's keep compass in Edit Mode only for now based on "show in map mode".
-   Wait, if "Map Mode" is distinct from "Play Mode", then Compass is for Map Mode.
-   Let's stick to showing it in Edit Mode and hiding in Play Mode for immersion.
-*/
+/* Compass is always visible now, per requirement */
+.compass-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  z-index: 20; /* Ensure it is above other UI */
+  transition: opacity 0.3s;
+}
 
-.play-mode .compass-container {
-  display: none; /* Hide compass in play mode per immersive requirement */
+/* Ensure centering context for the arrow */
+.compass-inner {
+  position: relative;
+  width: 0;
+  height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.compass-arrow {
+  position: absolute;
+  /* Center the pivot point */
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  /* Pivot around the center point where N/S meet */
+  transform-origin: 0 0; 
+}
+
+/* North (Red) - Points UP from center */
+.compass-arrow::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -8px; /* Half width */
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 35px solid #f44336;
+}
+
+/* South (White) - Points DOWN from center */
+.compass-arrow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -8px; /* Half width */
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 35px solid #ffffff;
+}
+
+.compass-label {
+  position: absolute;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-shadow: 0 1px 2px black;
 }
 
 .toolbar {
-  pointer-events: auto;
   background: rgba(0, 0, 0, 0.7);
   padding: 10px;
   border-radius: 8px;
@@ -86,7 +146,7 @@ body {
   transition: opacity 0.3s;
 }
 
-.toolbar button {
+.toolbar button, .toolbar select {
   background: #444;
   color: white;
   border: 1px solid #666;
@@ -111,6 +171,7 @@ body {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
 }
 
 .bottom-bar {
@@ -127,59 +188,37 @@ body {
 .save-load-container {
   display: flex;
   gap: 5px;
+  align-items: center;
 }
 
-.save-load-container input, .save-load-container select {
+.save-load-container input {
   background: #333;
   color: white;
   border: 1px solid #666;
   padding: 5px;
   border-radius: 4px;
+  width: 100px;
 }
 
-/* Compass Styles */
-.compass-container {
+#game-notification {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 60px;
-  height: 60px;
-  pointer-events: auto; /* Allow interaction if needed */
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.compass-arrow {
-  width: 0;
-  height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-bottom: 40px solid #f44336; /* Red North Pointer */
-  transform-origin: center bottom; /* Rotate around the base/center */
-  position: relative;
-  top: -10px; /* Adjust centering */
-}
-
-.compass-arrow::after {
-  content: '';
-  position: absolute;
-  top: 40px; /* Below the red part */
-  left: -10px;
-  width: 0;
-  height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 40px solid #ffffff; /* White South Pointer */
-}
-
-.compass-label {
-  position: absolute;
-  color: white;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #4caf50;
+  padding: 20px 40px;
+  border-radius: 8px;
+  font-size: 24px;
   font-weight: bold;
-  font-size: 12px;
-  top: -15px;
+  border: 2px solid #4caf50;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+#game-notification.show {
+  opacity: 1;
 }

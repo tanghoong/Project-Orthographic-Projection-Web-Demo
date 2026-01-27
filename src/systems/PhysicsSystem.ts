@@ -10,6 +10,7 @@ export class PhysicsSystem {
   private gravity: number = 30;
   private viewState: ViewState = ViewState.FRONT;
   private inputX: number = 0; // -1, 0, 1
+  public onGoalReached: (() => void) | null = null;
 
   constructor(character: Character, levelManager: LevelManager) {
     this.character = character;
@@ -129,7 +130,11 @@ export class PhysicsSystem {
         // Goal Detection (Task 4.4)
         if (voxel.userData.type === VoxelType.GOAL) {
           console.log("GOAL REACHED!");
-          alert("Victory! You reached the goal!");
+          if (this.onGoalReached) {
+            this.onGoalReached();
+          }
+          // alert("Victory! You reached the goal!");
+          
           // Reset?
           this.character.position.set(0, 5, 0);
           return;

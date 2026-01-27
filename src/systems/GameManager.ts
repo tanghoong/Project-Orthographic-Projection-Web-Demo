@@ -31,6 +31,9 @@ export class GameManager {
   private viewState: ViewState = ViewState.FRONT;
   private isRotating: boolean = false;
   private targetRotationY: number = 0; // Target Y-axis rotation in radians
+  
+  // Input State
+  private wasJumpPressed: boolean = false;
 
   constructor(engine: Engine, levelManager: LevelManager, editorSystem: EditorSystem) {
     this.engine = engine;
@@ -158,9 +161,14 @@ export class GameManager {
         // Pass intent to physics
         this.physicsSystem.setInput(moveDir);
 
-        if ((this.inputManager.isKeyPressed(' ') || this.inputManager.isKeyPressed('w')) && this.character.isGrounded) {
+        // Jump Logic (with Debounce)
+        const isJumpPressed = this.inputManager.isKeyPressed(' ') || this.inputManager.isKeyPressed('w');
+        
+        if (isJumpPressed && !this.wasJumpPressed && this.character.isGrounded) {
            this.physicsSystem.jump();
         }
+        this.wasJumpPressed = isJumpPressed;
+
       } else {
         this.physicsSystem.setInput(0); // Stop moving while rotating
       }

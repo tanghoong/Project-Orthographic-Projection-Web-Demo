@@ -17,6 +17,7 @@ export class EditorUI {
     this.render();
     this.attachEvents();
     this.updateLevelList();
+    this.updatePresetList();
     
     // Set initial mode class
     this.container.classList.add('edit-mode');
@@ -47,6 +48,22 @@ export class EditorUI {
     }
   }
 
+  public showNotification(message: string, duration: number = 3000): void {
+    let notification = document.getElementById('game-notification');
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.id = 'game-notification';
+      document.body.appendChild(notification);
+    }
+    
+    notification.textContent = message;
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+      notification?.classList.remove('show');
+    }, duration);
+  }
+
   private render(): void {
     this.container.innerHTML = `
       <div class="toolbar top-bar">
@@ -56,6 +73,12 @@ export class EditorUI {
            <select id="level-select"></select>
            <button id="btn-load-local">Load</button>
         </div>
+        <div style="width: 10px;"></div>
+        <div class="save-load-container">
+           <select id="preset-select">
+             <option value="" disabled selected>Load Preset...</option>
+           </select>
+        </div>
         <div style="width: 20px;"></div>
         <button id="btn-undo">Undo</button>
         <button id="btn-clear">Clear</button>
@@ -64,7 +87,9 @@ export class EditorUI {
       
       <div class="compass-container">
         <div class="compass-label">N</div>
-        <div class="compass-arrow" id="compass-arrow"></div>
+        <div class="compass-inner">
+            <div class="compass-arrow" id="compass-arrow"></div>
+        </div>
       </div>
 
       <div class="toolbar bottom-bar">
@@ -134,6 +159,18 @@ export class EditorUI {
         }
     });
 
+    // Preset Load
+    document.getElementById('preset-select')?.addEventListener('change', (e) => {
+        const select = e.target as HTMLSelectElement;
+        const key = select.value;
+        if (key) {
+            if (confirm(`Load preset map '${key}'? This will clear current changes.`)) {
+                this.levelManager.loadPreset(key);
+            }
+            select.value = ""; // Reset selection
+        }
+    });
+
     // Export JSON
     document.getElementById('btn-export')?.addEventListener('click', () => {
       const json = this.levelManager.serialize();
@@ -159,6 +196,20 @@ export class EditorUI {
           const option = document.createElement('option');
           option.value = level;
           option.textContent = level;
+          select.appendChild(option);
+      });
+  }
+
+  private updatePresetList(): void {
+      const select = document.getElementById('preset-select') as HTMLSelectElement;
+      if (!select) return;
+
+      const presets = this.levelManager.getPresetList();
+      
+      presets.forEach(preset => {
+          const option = document.createElement('option');
+          option.value = preset.key;
+          option.textContent = preset.name;
           select.appendChild(option);
       });
   }

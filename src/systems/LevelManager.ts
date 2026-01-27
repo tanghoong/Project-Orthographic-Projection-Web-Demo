@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Voxel, VoxelType } from '../entities/Voxel';
 import { CONSTANTS } from '../utils/Constants';
+import { PRESET_LEVELS } from '../data/PresetLevels';
 
 export interface LevelData {
   meta: {
@@ -184,6 +185,30 @@ export class LevelManager {
       console.error("Failed to load level:", e);
       return false;
     }
+  }
+
+  public loadPreset(key: string): boolean {
+    const preset = PRESET_LEVELS[key];
+    if (!preset) {
+      console.error(`Preset '${key}' not found.`);
+      return false;
+    }
+
+    this.clear();
+    console.log(`Loading preset: ${preset.name}`);
+    
+    preset.blocks.forEach(([x, y, z, type]) => {
+      this.addVoxel(x, y, z, type, false);
+    });
+
+    return true;
+  }
+
+  public getPresetList(): { key: string, name: string }[] {
+    return Object.keys(PRESET_LEVELS).map(key => ({
+      key,
+      name: PRESET_LEVELS[key].name
+    }));
   }
 
   public getAllVoxels(): Voxel[] {
