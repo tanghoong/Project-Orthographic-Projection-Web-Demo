@@ -1,7 +1,7 @@
 import { EditorSystem } from '../systems/EditorSystem';
 import { LevelManager } from '../systems/LevelManager';
 import { VoxelType } from '../entities/Voxel';
-import { GameMode, GameEventType } from '../utils/Enums';
+import { GameMode, GameEventType, DisplayMode } from '../utils/Enums';
 import { EventManager } from '../core/EventManager';
 import { Engine } from '../core/Engine';
 
@@ -38,6 +38,7 @@ export class EditorUI {
     this.eventManager.on(GameEventType.GOAL_REACHED, () => this.showNotification("Goal Reached! +100 Points"));
     this.eventManager.on(GameEventType.GAME_MODE_CHANGED, (mode: GameMode) => this.setGameMode(mode));
     this.eventManager.on(GameEventType.CAMERA_ROTATED, (angle: number) => this.updateCompass(angle));
+    this.eventManager.on(GameEventType.DISPLAY_MODE_CHANGED, (mode: DisplayMode) => this.updateViewIndicator(mode));
     this.eventManager.on(GameEventType.KEY_COLLECTED, (data: { collected: number; required: number }) => this.updateKeyCounter(data.collected, data.required));
     this.eventManager.on(GameEventType.PLAYER_DIED, () => this.showNotification("💀 Ouch! -5 Points", 2000));
     this.eventManager.on(GameEventType.LEVEL_COMPLETE, (data: { time: number; rotations: number; stats: { bestTime?: number; bestRotations?: number }; hasNext: boolean }) => this.showLevelComplete(data));
@@ -103,6 +104,8 @@ export class EditorUI {
         <button id="btn-undo">Undo</button>
         <button id="btn-clear">Clear</button>
         <button id="btn-export">Export JSON</button>
+        <div style="flex-grow: 1;"></div>
+        <button id="btn-play-mode-top" class="mode-btn play-btn">▶ Play Level</button>
       </div>
       
       <div id="build-height-panel" class="build-height-panel">
@@ -242,6 +245,18 @@ export class EditorUI {
     const totalEl = document.getElementById('keys-total');
     if (collectedEl) collectedEl.textContent = collected.toString();
     if (totalEl) totalEl.textContent = total.toString();
+  }
+
+  public updateViewIndicator(mode: DisplayMode): void {
+    const el = document.getElementById('view-indicator');
+    if (el) {
+        el.textContent = `VIEW: ${mode === DisplayMode.ISOMETRIC ? '3D ISO' : '2D'}`;
+        if (mode === DisplayMode.ISOMETRIC) {
+            el.classList.add('iso');
+        } else {
+            el.classList.remove('iso');
+        }
+    }
   }
   
   public showLevelComplete(data: { time: number; rotations: number; stats: { bestTime?: number; bestRotations?: number }; hasNext: boolean }): void {
@@ -447,6 +462,15 @@ export class EditorUI {
     
     document.getElementById('btn-camera-reset')?.addEventListener('click', () => {
       this.engine.resetCamera();
+    });
+    
+    // Mode Switching Buttons
+    document.getElementById('btn-play-mode-top')?.addEventListener('click', () => {
+        this.eventManager.emit(GameEventType.INPUT_ACTION, { action: 'enter_play_mode' });
+    });
+
+    document.getElementById('btn-edit-mode-hud')?.addEventListener('click', () => {
+        this.eventManager.emit(GameEventType.INPUT_ACTION, { action: 'return_editor' });
     });
     
     // Level Complete Modal Buttons

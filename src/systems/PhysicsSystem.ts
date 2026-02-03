@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { Character } from '../entities/Character';
 import { LevelManager } from './LevelManager';
-import { ViewState } from '../utils/Enums';
+import { ViewState, GameEventType } from '../utils/Enums';
 import { VoxelType } from '../entities/Voxel';
 import { CONSTANTS } from '../utils/Constants';
+import { EventManager } from '../core/EventManager';
 
 export class PhysicsSystem {
   private character: Character;
@@ -205,6 +206,7 @@ export class PhysicsSystem {
         // Execute buffered jump
         this.character.velocity.y = CONSTANTS.PHYSICS.JUMP_FORCE;
         this.jumpBuffer = 0;
+        EventManager.getInstance().emit(GameEventType.PLAYER_JUMP, this.character.position.clone());
       }
     }
 

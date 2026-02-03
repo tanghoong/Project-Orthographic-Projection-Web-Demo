@@ -10,6 +10,8 @@ import { CONSTANTS } from '../utils/Constants';
 import { GameMode, GameEventType } from '../utils/Enums';
 import { EventManager } from '../core/EventManager';
 import { CameraSystem } from './CameraSystem';
+import { AudioSystem } from './AudioSystem';
+import { ParticleSystem } from './ParticleSystem';
 
 export class GameManager {
   private engine: Engine;
@@ -20,6 +22,9 @@ export class GameManager {
   private character: Character | null = null;
   private eventManager: EventManager;
   private cameraSystem: CameraSystem;
+  // @ts-ignore
+  private _audioSystem: AudioSystem;
+  private particleSystem: ParticleSystem;
   
   private mode: GameMode = GameMode.EDIT;
   private inputManager: InputManager;
@@ -37,17 +42,42 @@ export class GameManager {
     this.inputManager = engine.getInputManager();
     this.eventManager = EventManager.getInstance();
     this.cameraSystem = new CameraSystem(engine);
+    this._audioSystem = new AudioSystem();
+    this.particleSystem = new ParticleSystem(engine.getScene());
     this.progressionManager = new ProgressionManager(levelManager);
 
     // Listen for Mode Switch (Tab)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Tab') {
         e.preventDefault(); // Prevent focus change
-        this.toggleMode();
+        
+        if (this.mode === GameMode.PLAY) {
+            // In Play Mode: Toggle View (2D <-> ISO)
+            this.cameraSystem.toggleDisplayMode();
+        } else {
+            // In Edit Mode: Toggle Mode (Edit <-> Play) - Keep this for convenience? 
+            // Or strictly follow "Separate activation mechanism"?
+            // User said: "Separate activation mechanism for the map editor that can only be triggered through a dedicated map editor button."
+            // But they also said: "Design and develop a Tab key functionality that toggles between 2D and 3D isometric map views in real-time during gameplay."
+            // Implicitly, Tab in Edit mode might be useless or do the same?
+            // Let's keep Tab for View Toggle in BOTH modes for consistency, and use buttons for Mode Switch.
+            this.cameraSystem.toggleDisplayMode();
+        }
       }
     });
 
     // Event Listeners
+    this.eventManager.on(GameEventType.INPUT_ACTION, (data: { action: string }) => {
+      if (data.action === 'next_level') {
+        this.loadNextLevel();
+      } else if (data.action === 'retry_level') {
+        this.retryCurrentLevel();
+      } else if (data.action === 'return_editor') {
+        this.enterEditMode();
+      } else if (data.action === 'enter_play_mode') {
+        this.enterPlayMode();
+      }
+    });
     this.eventManager.on(GameEventType.INPUT_ROTATE, (data: { direction: number }) => {
         if (this.mode === GameMode.PLAY) {
             this.cameraSystem.rotate(data.direction, 
@@ -63,16 +93,6 @@ export class GameManager {
 
     this.eventManager.on(GameEventType.INPUT_MOVE, (data: { key: string; pressed: boolean }) => {
         this.inputManager.setVirtualKey(data.key, data.pressed);
-    });
-    
-    this.eventManager.on(GameEventType.INPUT_ACTION, (data: { action: string }) => {
-      if (data.action === 'next_level') {
-        this.loadNextLevel();
-      } else if (data.action === 'retry_level') {
-        this.retryCurrentLevel();
-      } else if (data.action === 'return_editor') {
-        this.toggleMode(); // Switch back to edit mode
-      }
     });
   }
 
@@ -181,6 +201,9 @@ export class GameManager {
   }
 
   public update(dt: number): void {
+    // Update Systems
+    this.particleSystem.update(dt);
+
     if (this.mode === GameMode.PLAY && this.physicsSystem && this.character) {
       // Handle Rotation Input
       if (!this.cameraSystem.isCameraRotating()) {

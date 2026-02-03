@@ -26,8 +26,19 @@ export enum GameEventType {
   CAMERA_ROTATED = 'camera_rotated',
   KEY_COLLECTED = 'key_collected',
   PLAYER_DIED = 'player_died',
+  PLAYER_JUMP = 'player_jump',
+  PLAYER_LAND = 'player_land',
+  DOOR_OPENED = 'door_opened',
   LEVEL_COMPLETE = 'level_complete',
   
   // Editor Events
-  PRESET_LOADED = 'preset_loaded'
+  PRESET_LOADED = 'preset_loaded',
+  
+  // View Events
+  DISPLAY_MODE_CHANGED = 'display_mode_changed'
+}
+
+export enum DisplayMode {
+  ORTHO_2D = 0,
+  ISOMETRIC = 1
 }
