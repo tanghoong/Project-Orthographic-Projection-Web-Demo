@@ -2,6 +2,20 @@ import * as THREE from 'three';
 import { Voxel, VoxelType } from '../entities/Voxel';
 import { CONSTANTS } from '../utils/Constants';
 import { PRESET_LEVELS } from '../data/PresetLevels';
+import { z } from 'zod';
+
+const LevelSchema = z.object({
+  meta: z.object({
+    version: z.string(),
+    author: z.string(),
+    created_at: z.string()
+  }),
+  level_data: z.object({
+    grid_size: z.array(z.number()).min(3).max(3),
+    spawn_point: z.array(z.number()).min(3).max(3),
+    blocks: z.array(z.array(z.number()).min(4).max(4))
+  })
+});
 
 export interface LevelData {
   meta: {
@@ -183,7 +197,8 @@ export class LevelManager {
 
   public deserialize(json: string): boolean {
     try {
-      const data: LevelData = JSON.parse(json);
+      const parsed = JSON.parse(json);
+      const data = LevelSchema.parse(parsed) as unknown as LevelData;
       
       this.clear();
 

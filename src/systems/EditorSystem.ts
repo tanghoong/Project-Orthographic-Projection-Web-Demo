@@ -3,10 +3,13 @@ import { Engine } from '../core/Engine';
 import { LevelManager } from './LevelManager';
 import { VoxelType } from '../entities/Voxel';
 import { CONSTANTS } from '../utils/Constants';
+import { EventManager } from '../core/EventManager';
+import { GameEventType, GameMode } from '../utils/Enums';
 
 export class EditorSystem {
   private engine: Engine;
   private levelManager: LevelManager;
+  private eventManager: EventManager;
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
   private ghostMesh: THREE.Mesh;
@@ -41,8 +44,14 @@ export class EditorSystem {
   constructor(engine: Engine, levelManager: LevelManager) {
     this.engine = engine;
     this.levelManager = levelManager;
+    this.eventManager = EventManager.getInstance();
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
+
+    // Subscribe to Game Events
+    this.eventManager.on(GameEventType.GAME_MODE_CHANGED, (mode: GameMode) => {
+        this.setEnabled(mode === GameMode.EDIT);
+    });
 
     // Setup Ghost Mesh (Placement preview)
     const geometry = new THREE.BoxGeometry(CONSTANTS.VOXEL_SIZE, CONSTANTS.VOXEL_SIZE, CONSTANTS.VOXEL_SIZE);

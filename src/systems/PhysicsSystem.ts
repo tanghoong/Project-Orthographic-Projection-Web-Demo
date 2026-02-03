@@ -216,6 +216,7 @@ export class PhysicsSystem {
   }
 
   private checkLadder(): void {
+    this.character.updateMatrixWorld(); // Ensure matrix is up to date
     const charBox = new THREE.Box3().setFromObject(this.character);
     const voxels = this.levelManager.getAllVoxels();
     
@@ -245,11 +246,14 @@ export class PhysicsSystem {
   }
 
   private checkCollision(axis: 'horizontal' | 'vertical'): boolean {
+    this.character.updateMatrixWorld(); // Update matrix for new position
     const charBox = new THREE.Box3().setFromObject(this.character);
     // Shrink slightly to prevent floating point precision issues
     const epsilon = 0.01;
     charBox.min.addScalar(epsilon);
     charBox.max.subScalar(epsilon);
+
+    // console.log(`Checking ${axis} collision. CharBox: Y[${charBox.min.y.toFixed(2)}, ${charBox.max.y.toFixed(2)}]`);
 
     const voxels = this.levelManager.getAllVoxels();
     const charSize = this.character.getSize();
@@ -260,6 +264,8 @@ export class PhysicsSystem {
     for (const voxel of voxels) {
       const voxelPos = voxel.position;
       const voxelSize = 1; // Assuming size 1
+      
+      // if (axis === 'vertical') console.log(`  Voxel at ${voxelPos.x},${voxelPos.y},${voxelPos.z}`);
 
       // 2D Projection Collision Logic
       
@@ -298,6 +304,7 @@ export class PhysicsSystem {
       }
 
       if (isOverlapping) {
+        console.log(`    Collision detected with ${voxelPos.x},${voxelPos.y},${voxelPos.z}`);
         collisionFound = true; // Mark as found
         
         // Key Collection

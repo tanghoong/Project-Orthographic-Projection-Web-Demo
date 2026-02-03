@@ -22,7 +22,7 @@ export class EditorUI {
     this.editorSystem = editorSystem;
     this.levelManager = levelManager;
     this.engine = engine;
-    this.container = document.getElementById(containerId)!;;
+    this.container = document.getElementById(containerId)!;
     this.eventManager = EventManager.getInstance();
     
     this.render();

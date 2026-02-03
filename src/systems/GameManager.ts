@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Engine } from '../core/Engine';
 import { LevelManager } from './LevelManager';
-import { EditorSystem } from './EditorSystem';
+// import { EditorSystem } from './EditorSystem'; // Removed usage but keeping import if needed? No, remove it.
 import { PhysicsSystem } from './PhysicsSystem';
 import { ProgressionManager } from './ProgressionManager';
 import { Character } from '../entities/Character';
@@ -14,7 +14,7 @@ import { CameraSystem } from './CameraSystem';
 export class GameManager {
   private engine: Engine;
   private levelManager: LevelManager;
-  private editorSystem: EditorSystem;
+  // private editorSystem: EditorSystem; // Decoupled
   private physicsSystem: PhysicsSystem | null = null;
   private progressionManager: ProgressionManager;
   private character: Character | null = null;
@@ -30,10 +30,10 @@ export class GameManager {
   // Game State
   private score: number = 0;
 
-  constructor(engine: Engine, levelManager: LevelManager, editorSystem: EditorSystem) {
+  constructor(engine: Engine, levelManager: LevelManager) {
     this.engine = engine;
     this.levelManager = levelManager;
-    this.editorSystem = editorSystem;
+    // this.editorSystem = editorSystem;
     this.inputManager = engine.getInputManager();
     this.eventManager = EventManager.getInstance();
     this.cameraSystem = new CameraSystem(engine);
@@ -101,7 +101,7 @@ export class GameManager {
     this.engine.setHelpersVisibility(false);
 
     // Disable Editor
-    this.editorSystem.setEnabled(false);
+    // this.editorSystem.setEnabled(false);
 
     // Reset Camera
     this.cameraSystem.reset();
@@ -166,8 +166,8 @@ export class GameManager {
     // Enable Helpers (Axes/Grid)
     this.engine.setHelpersVisibility(true);
 
-    // Enable Editor
-    this.editorSystem.setEnabled(true);
+    // Enable Editor - Handled via Event
+    // this.editorSystem.setEnabled(true);
 
     // Re-enable OrbitControls
     this.engine.getControls().enabled = true;

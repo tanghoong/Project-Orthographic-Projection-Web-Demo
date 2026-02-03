@@ -14,7 +14,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 const engine = new Engine('game-container');
 const levelManager = new LevelManager(engine.getScene());
 const editorSystem = new EditorSystem(engine, levelManager);
-const gameManager = new GameManager(engine, levelManager, editorSystem);
+const gameManager = new GameManager(engine, levelManager);
 new EditorUI('ui-layer', editorSystem, levelManager, engine);
 // gameManager.setUI(ui); // Decoupled via EventManager
 
@@ -32,6 +32,15 @@ engine.onUpdate((dt) => {
 });
 
 engine.start();
+
+// Hide loading screen
+const loadingScreen = document.getElementById('loading-screen');
+if (loadingScreen) {
+  loadingScreen.style.opacity = '0';
+  setTimeout(() => {
+    loadingScreen.style.display = 'none';
+  }, 500);
+}
 
 console.log('Ortho Engine initialized. Press TAB to switch modes.');
 
